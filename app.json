@@ -44,5 +44,12 @@
       "typedRoutes": true,
       "reactCompiler": true
     }
+  },
+
+  "splash": {
+      "backgroundColor": "#C2E96A",
+      "image": "./assets/images/credit-card.png",
+      "resizeMode": "contain"
   }
+
 }
