@@ -9,6 +9,11 @@ export default function LoginScreen() {
     const goToRegister = () => {
         router.push("/register");
     };
+
+    const goToHome = () => {
+        console.log("To home clicked")
+        router.push("/home")
+    };
     return (
         <View style={styles.container}>
 
@@ -78,7 +83,10 @@ export default function LoginScreen() {
             </Text>
 
             {/* Login Button */}
-            <TouchableOpacity style={styles.loginBtn}>
+            <TouchableOpacity 
+                style={styles.loginBtn}
+                onPress={goToHome}
+            >
                 <Text style={styles.loginText}>Login</Text>
             </TouchableOpacity>
 

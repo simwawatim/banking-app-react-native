@@ -1,6 +1,6 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
+import { AntDesign, FontAwesome, Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { Ionicons, AntDesign, FontAwesome } from "@expo/vector-icons";
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 export default function RegisterScreen() {
 
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
     },
 
     registerBtn: {
-        backgroundColor: "black",
+        backgroundColor: "#170556",
         padding: 15,
         borderRadius: 12,
         alignItems: "center",
