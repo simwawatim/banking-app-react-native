@@ -8,15 +8,19 @@ import {
 } from "react-native";
 
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { router } from "expo-router";
 
 export default function ProfileScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.iconButton}>
-          <Ionicons name="arrow-back" size={24} color="#1B1D4D" />
-        </TouchableOpacity>
+              <TouchableOpacity
+        style={styles.iconButton}
+        onPress={() => router.push("/home")}
+      >
+        <Ionicons name="arrow-back" size={24} color="#1B1D4D" />
+      </TouchableOpacity>
 
         <Text style={styles.headerTitle}>Profile</Text>
 

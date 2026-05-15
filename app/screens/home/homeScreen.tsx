@@ -11,6 +11,7 @@ import {
   MaterialIcons,
   FontAwesome5,
 } from "@expo/vector-icons";
+
 import { router } from "expo-router";
 
 export default function HomeScreen() {
@@ -37,40 +38,54 @@ export default function HomeScreen() {
           </View>
 
           <View>
-            <Text style={styles.storageTitle}>Available{"\n"}Storage</Text>
+            <Text style={styles.storageTitle}>
+              Available{"\n"}Storage
+            </Text>
             <Text style={styles.storageSub}>130GB / 512GB</Text>
           </View>
         </View>
 
         {/* Categories */}
         <View style={styles.categories}>
-          <View style={styles.categoryItem}>
+          <TouchableOpacity
+            style={styles.categoryItem}
+            onPress={() => router.push("/all")}
+          >
             <View style={[styles.categoryIcon, { backgroundColor: "#5B7CFA" }]}>
               <MaterialIcons name="grid-view" size={24} color="#fff" />
             </View>
             <Text style={styles.categoryText}>All</Text>
-          </View>
+          </TouchableOpacity>
 
-          <View style={styles.categoryItem}>
+          <TouchableOpacity
+            style={styles.categoryItem}
+            onPress={() => router.push("/screens/folder")}
+          >
             <View style={[styles.categoryIcon, { backgroundColor: "#59C2FF" }]}>
               <Ionicons name="folder" size={22} color="#fff" />
             </View>
             <Text style={styles.categoryText}>Folder</Text>
-          </View>
+          </TouchableOpacity>
 
-          <View style={styles.categoryItem}>
+          <TouchableOpacity
+            style={styles.categoryItem}
+            onPress={() => router.push("/screens/file")}
+          >
             <View style={[styles.categoryIcon, { backgroundColor: "#FF914D" }]}>
               <Ionicons name="document-text" size={22} color="#fff" />
             </View>
             <Text style={styles.categoryText}>File</Text>
-          </View>
+          </TouchableOpacity>
 
-          <View style={styles.categoryItem}>
+          <TouchableOpacity
+            style={styles.categoryItem}
+            onPress={() => router.push("/screens/people")}
+          >
             <View style={[styles.categoryIcon, { backgroundColor: "#FF5E8A" }]}>
               <Ionicons name="person" size={22} color="#fff" />
             </View>
             <Text style={styles.categoryText}>People</Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* Recent Files */}
@@ -81,7 +96,6 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* File Card */}
         <View style={styles.fileCard}>
           <View style={styles.fileLeft}>
             <View style={styles.fileIcon}>
@@ -94,18 +108,12 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          <Ionicons
-            name="ellipsis-horizontal"
-            size={20}
-            color="#7B7B9D"
-          />
+          <Ionicons name="ellipsis-horizontal" size={20} color="#7B7B9D" />
         </View>
 
         <View style={styles.fileCard}>
           <View style={styles.fileLeft}>
-            <View
-              style={[styles.fileIcon, { backgroundColor: "#FF5E8A" }]}
-            >
+            <View style={[styles.fileIcon, { backgroundColor: "#FF5E8A" }]}>
               <Ionicons name="image" size={18} color="#fff" />
             </View>
 
@@ -115,18 +123,12 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          <Ionicons
-            name="ellipsis-horizontal"
-            size={20}
-            color="#7B7B9D"
-          />
+          <Ionicons name="ellipsis-horizontal" size={20} color="#7B7B9D" />
         </View>
 
         <View style={styles.fileCard}>
           <View style={styles.fileLeft}>
-            <View
-              style={[styles.fileIcon, { backgroundColor: "#FF914D" }]}
-            >
+            <View style={[styles.fileIcon, { backgroundColor: "#FF914D" }]}>
               <FontAwesome5 name="music" size={16} color="#fff" />
             </View>
 
@@ -136,29 +138,64 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          <Ionicons
-            name="ellipsis-horizontal"
-            size={20}
-            color="#7B7B9D"
-          />
+          <Ionicons name="ellipsis-horizontal" size={20} color="#7B7B9D" />
         </View>
       </ScrollView>
 
-      {/* Bottom Navigation */}
+      {/* Bottom Navigation (FIXED) */}
       <View style={styles.bottomNav}>
-        <Ionicons name="home" size={24} color="#22C7B8" />
-        <Ionicons name="folder" size={24} color="#9AA3C7" />
+        <NavItem
+          icon="home"
+          label="Home"
+          active
+          onPress={() => router.push("/home")}
+        />
 
-        <View style={styles.uploadButton}>
+        <NavItem
+          icon="folder"
+          label="Folders"
+          active={false}
+          onPress={() => router.push("/folders")}
+        />
+
+        <TouchableOpacity
+          style={styles.uploadButton}
+          onPress={() => router.push("/upload")}
+        >
           <Ionicons name="cloud-upload" size={24} color="#fff" />
-        </View>
-
-        <Ionicons name="star" size={24} color="#9AA3C7" />
-        <TouchableOpacity onPress={() => router.push("/profile")}>
-            <Ionicons name="person" size={24} color="#9AA3C7" />
         </TouchableOpacity>
+
+        <NavItem
+          icon="document-text"
+          label="Files"
+          active={false}
+          onPress={() => router.push("/screens/file")}
+        />
+
+        <NavItem
+          icon="person"
+          label="Profile"
+          active={false}
+          onPress={() => router.push("/profile")}
+        />
       </View>
     </View>
+  );
+}
+
+/* Reusable Nav Item */
+function NavItem({ icon, label, onPress, active }: { icon: any; label: string; onPress: () => void; active: boolean }) {
+  return (
+    <TouchableOpacity style={styles.navItem} onPress={onPress}>
+      <Ionicons
+        name={icon}
+        size={24}
+        color={active ? "#22C7B8" : "#9AA3C7"}
+      />
+      <Text style={active ? styles.navTextActive : styles.navText}>
+        {label}
+      </Text>
+    </TouchableOpacity>
   );
 }
 
@@ -184,7 +221,6 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     justifyContent: "center",
     alignItems: "center",
-    elevation: 2,
   },
 
   headerTitle: {
@@ -259,7 +295,6 @@ const styles = StyleSheet.create({
   recentHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
     marginBottom: 20,
   },
 
@@ -280,7 +315,6 @@ const styles = StyleSheet.create({
     padding: 18,
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
     marginBottom: 15,
   },
 
@@ -319,6 +353,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
     marginTop: 10,
+  },
+
+  navItem: {
+    alignItems: "center",
+  },
+
+  navText: {
+    fontSize: 12,
+    color: "#9AA3C7",
+    marginTop: 4,
+    fontWeight: "500",
+  },
+
+  navTextActive: {
+    fontSize: 12,
+    color: "#22C7B8",
+    marginTop: 4,
+    fontWeight: "700",
   },
 
   uploadButton: {
