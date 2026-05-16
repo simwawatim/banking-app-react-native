@@ -65,66 +65,6 @@ export default function FolderScreen() {
             />
           ))}
         </View>
-
-        {/* SECRET FOLDER */}
-        <Text style={styles.sectionTitle}>Secure Folder</Text>
-
-        <TouchableOpacity
-          style={styles.secretCard}
-          onPress={() => setLocked(!locked)}
-        >
-          <View style={styles.secretLeft}>
-            <View style={styles.secretIcon}>
-              <Ionicons
-                name={locked ? "lock-closed" : "lock-open"}
-                size={22}
-                color="#fff"
-              />
-            </View>
-
-            <View>
-              <Text style={styles.secretTitle}>
-                {locked ? "Private Vault" : "Unlocked Vault"}
-              </Text>
-              <Text style={styles.secretText}>
-                {locked
-                  ? "Tap to unlock secure files"
-                  : "Access granted"}
-              </Text>
-            </View>
-          </View>
-
-          <Ionicons
-            name={locked ? "eye-off" : "eye"}
-            size={22}
-            color="#9AA3C7"
-          />
-        </TouchableOpacity>
-
-        {/* SECRET FILES */}
-        {!locked && (
-          <View style={styles.menuContainer}>
-            <FolderItem
-              item={{
-                id: "s1",
-                name: "Hidden Photos",
-                icon: "image",
-                color: "#FF5E8A",
-              }}
-              onDelete={() => Alert.alert("Cannot delete secure file")}
-            />
-
-            <FolderItem
-              item={{
-                id: "s2",
-                name: "Private Docs",
-                icon: "document-text",
-                color: "#22C7B8",
-              }}
-              onDelete={() => Alert.alert("Cannot delete secure file")}
-            />
-          </View>
-        )}
       </ScrollView>
     </View>
   );

@@ -9,91 +9,85 @@ import {
 
 import {
   Ionicons,
-  MaterialIcons
+  MaterialIcons,
 } from "@expo/vector-icons";
 
 import { router } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
+/* ---------------- MOCK DATA ---------------- */
+type FileItem = {
+  name: string;
+  size: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  color: string;
+};
+
+const FILES: FileItem[] = [
+  {
+    name: "Preview.mp4",
+    size: "8 MB",
+    icon: "play",
+    color: "#5B7CFA",
+  },
+  {
+    name: "Wallpaper.jpg",
+    size: "4.8 MB",
+    icon: "image",
+    color: "#FF5E8A",
+  },
+  {
+    name: "Music.mp3",
+    size: "12 MB",
+    icon: "musical-notes",
+    color: "#FF914D",
+  },
+  {
+    name: "Project.pdf",
+    size: "2 MB",
+    icon: "document-text",
+    color: "#22C7B8",
+  },
+];
+
+/* ---------------- SCREEN ---------------- */
 export default function HomeScreen() {
   const [search, setSearch] = useState("");
 
-  const mockResults = [
-    {
-      name: "Preview.mp4",
-      size: "8 MB",
-      icon: "play",
-      color: "#5B7CFA",
-    },
-    {
-      name: "Wallpaper.jpg",
-      size: "4.8 MB",
-      icon: "image",
-      color: "#FF5E8A",
-    },
-    {
-      name: "Music.mp3",
-      size: "12 MB",
-      icon: "musical-notes",
-      color: "#FF914D",
-    },
-    {
-      name: "Project.pdf",
-      size: "2 MB",
-      icon: "document-text",
-      color: "#22C7B8",
-    },
-  ];
-
-  const filteredResults = mockResults.filter((item) =>
-    item.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredFiles = useMemo(() => {
+    return FILES.filter((f) =>
+      f.name
+        .toLowerCase()
+        .includes(search.toLowerCase())
+    );
+  }, [search]);
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      {/* <View style={styles.header}>
-        <TouchableOpacity style={styles.iconButton}>
-          <Ionicons
-            name="menu"
-            size={24}
-            color="#1B1D4D"
-          />
-        </TouchableOpacity>
-
-        <Text style={styles.headerTitle}>Home</Text>
-
-        <TouchableOpacity style={styles.iconButton}>
-          <Ionicons
-            name="notifications-outline"
-            size={22}
-            color="#1B1D4D"
-          />
-        </TouchableOpacity>
-      </View> */}
-
-      {/* SEARCH BAR */}
+      {/* SEARCH */}
       <View style={styles.searchContainer}>
         <Ionicons
           name="search"
           size={20}
           color="#9AA3C7"
         />
-
         <TextInput
           placeholder="Search files..."
           value={search}
           onChangeText={setSearch}
           style={styles.searchInput}
-          placeholderTextColor="#9AA3C7"
         />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Storage Card */}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+      >
+        {/* STORAGE */}
         <View style={styles.storageCard}>
           <View style={styles.circle}>
-            <Text style={styles.circleText}>80%</Text>
+            <Text style={styles.circleText}>
+              80%
+            </Text>
           </View>
 
           <View>
@@ -107,219 +101,89 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Categories */}
+        {/* CATEGORIES */}
         <View style={styles.categories}>
-          <TouchableOpacity
-            style={styles.categoryItem}
+          <Category
+            label="All"
+            icon="grid-view"
+            color="#5B7CFA"
             onPress={() => router.push("/all")}
-          >
-            <View
-              style={[
-                styles.categoryIcon,
-                { backgroundColor: "#5B7CFA" },
-              ]}
-            >
-              <MaterialIcons
-                name="grid-view"
-                size={24}
-                color="#fff"
-              />
-            </View>
-
-            <Text style={styles.categoryText}>All</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.categoryItem}
-            onPress={() => router.push("/folders")}
-          >
-            <View
-              style={[
-                styles.categoryIcon,
-                { backgroundColor: "#59C2FF" },
-              ]}
-            >
-              <Ionicons
-                name="folder"
-                size={22}
-                color="#fff"
-              />
-            </View>
-
-            <Text style={styles.categoryText}>
-              Folder
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.categoryItem}
+          />
+          <Category
+            label="Folders"
+            icon="folder"
+            color="#59C2FF"
+            onPress={() =>
+              router.push("/folders")
+            }
+          />
+          <Category
+            label="Files"
+            icon="document-text"
+            color="#FF914D"
             onPress={() => router.push("/files")}
-          >
-            <View
-              style={[
-                styles.categoryIcon,
-                { backgroundColor: "#FF914D" },
-              ]}
-            >
-              <Ionicons
-                name="document-text"
-                size={22}
-                color="#fff"
-              />
-            </View>
-
-            <Text style={styles.categoryText}>Files</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.categoryItem}
-            onPress={() => router.push("/people")}
-          >
-            <View
-              style={[
-                styles.categoryIcon,
-                { backgroundColor: "#FF5E8A" },
-              ]}
-            >
-              <Ionicons
-                name="people"
-                size={22}
-                color="#fff"
-              />
-            </View>
-
-            <Text style={styles.categoryText}>People</Text>
-          </TouchableOpacity>
+          />
+          <Category
+            label="People"
+            icon="people"
+            color="#FF5E8A"
+            onPress={() =>
+              router.push("/people")
+            }
+          />
         </View>
 
-        {/* Search Results */}
-        {search.length > 0 && (
-          <>
-            <View style={styles.recentHeader}>
-              <Text style={styles.recentTitle}>
-                Search Results
-              </Text>
+        {/* FILE LIST */}
+        <Text style={styles.sectionTitle}>
+          {search
+            ? "Search Results"
+            : "Recent Files"}
+        </Text>
 
-              <Text style={styles.resultCount}>
-                {filteredResults.length} found
-              </Text>
-            </View>
-
-            {filteredResults.map((item, index) => (
-              <View
-                key={index}
-                style={styles.fileCard}
-              >
-                <View style={styles.fileLeft}>
-                  <View
-                    style={[
-                      styles.fileIcon,
-                      { backgroundColor: item.color },
-                    ]}
-                  >
-                    <Ionicons
-                      name={item.icon as any}
-                      size={18}
-                      color="#fff"
-                    />
-                  </View>
-
-                  <View>
-                    <Text style={styles.fileName}>
-                      {item.name}
-                    </Text>
-
-                    <Text style={styles.fileSize}>
-                      {item.size}
-                    </Text>
-                  </View>
-                </View>
-
-                <Ionicons
-                  name="ellipsis-horizontal"
-                  size={20}
-                  color="#7B7B9D"
-                />
-              </View>
-            ))}
-
-            {filteredResults.length === 0 && (
-              <View style={styles.emptyBox}>
-                <Ionicons
-                  name="search"
-                  size={60}
-                  color="#D0D5E5"
-                />
-
-                <Text style={styles.emptyTitle}>
-                  No Results Found
-                </Text>
-
-                <Text style={styles.emptySub}>
-                  Try another file name
-                </Text>
-              </View>
-            )}
-          </>
-        )}
-
-        {/* Recent Files */}
-        {search.length === 0 && (
-          <>
-            <View style={styles.recentHeader}>
-              <Text style={styles.recentTitle}>
-                Recent files
-              </Text>
-
-              <TouchableOpacity>
-                <Text style={styles.seeAll}>
-                  See all
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <FileCard
-              icon="play"
-              color="#5B7CFA"
-              name="Preview.mp4"
-              size="8 MB"
+        {filteredFiles.length === 0 ? (
+          <View style={styles.emptyBox}>
+            <Ionicons
+              name="search"
+              size={60}
+              color="#D0D5E5"
             />
-
+            <Text style={styles.emptyTitle}>
+              No Files Found
+            </Text>
+            <Text style={styles.emptySub}>
+              Try a different name
+            </Text>
+          </View>
+        ) : (
+          filteredFiles.map((file, i) => (
             <FileCard
-              icon="image"
-              color="#FF5E8A"
-              name="Wallpaper.jpg"
-              size="4.8 MB"
+              key={i}
+              file={file}
             />
-
-            <FileCard
-              icon="musical-notes"
-              color="#FF914D"
-              name="Music.mp3"
-              size="12 MB"
-            />
-          </>
+          ))
         )}
       </ScrollView>
 
-      {/* Bottom Navigation */}
+      {/* BOTTOM NAV */}
       <View style={styles.bottomNav}>
-        <NavItem
+        <Nav
           icon="home"
           label="Home"
           active
           onPress={() => router.push("/home")}
         />
 
-        <NavItem
+        <Nav
           icon="folder"
           label="Folders"
           active={false}
-          onPress={() => router.push("/folders")}
+          onPress={() =>
+            router.push("/folders")
+          }
         />
 
         <TouchableOpacity
-          style={styles.uploadButton}
+          style={styles.uploadBtn}
           onPress={() => router.push("/upload")}
         >
           <Ionicons
@@ -329,55 +193,82 @@ export default function HomeScreen() {
           />
         </TouchableOpacity>
 
-        <NavItem
+        <Nav
           icon="document-text"
           label="Files"
           active={false}
           onPress={() => router.push("/files")}
         />
 
-        <NavItem
+        <Nav
           icon="person"
           label="Profile"
           active={false}
-          onPress={() => router.push("/profile")}
+          onPress={() =>
+            router.push("/profile")
+          }
         />
       </View>
     </View>
   );
 }
 
-/* FILE CARD */
-function FileCard({
+/* ---------------- CATEGORY ---------------- */
+function Category({
+  label,
   icon,
   color,
-  name,
-  size,
-}: {
-  icon: any;
-  color: string;
-  name: string;
-  size: string;
-}) {
+  onPress,
+}: any) {
+  return (
+    <TouchableOpacity
+      style={styles.categoryItem}
+      onPress={onPress}
+    >
+      <View
+        style={[
+          styles.categoryIcon,
+          { backgroundColor: color },
+        ]}
+      >
+        <MaterialIcons
+          name={icon}
+          size={22}
+          color="#fff"
+        />
+      </View>
+      <Text style={styles.categoryText}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+/* ---------------- FILE CARD ---------------- */
+function FileCard({ file }: { file: FileItem }) {
   return (
     <View style={styles.fileCard}>
       <View style={styles.fileLeft}>
         <View
           style={[
             styles.fileIcon,
-            { backgroundColor: color },
+            { backgroundColor: file.color },
           ]}
         >
           <Ionicons
-            name={icon}
+            name={file.icon}
             size={18}
             color="#fff"
           />
         </View>
 
         <View>
-          <Text style={styles.fileName}>{name}</Text>
-          <Text style={styles.fileSize}>{size}</Text>
+          <Text style={styles.fileName}>
+            {file.name}
+          </Text>
+          <Text style={styles.fileSize}>
+            {file.size}
+          </Text>
         </View>
       </View>
 
@@ -390,18 +281,13 @@ function FileCard({
   );
 }
 
-/* NAVIGATION ITEM */
-function NavItem({
+/* ---------------- NAV ---------------- */
+function Nav({
   icon,
   label,
-  onPress,
   active,
-}: {
-  icon: any;
-  label: string;
-  onPress: () => void;
-  active: boolean;
-}) {
+  onPress,
+}: any) {
   return (
     <TouchableOpacity
       style={styles.navItem}
@@ -409,14 +295,15 @@ function NavItem({
     >
       <Ionicons
         name={icon}
-        size={24}
-        color={active ? "#22C7B8" : "#9AA3C7"}
+        size={22}
+        color={
+          active ? "#22C7B8" : "#9AA3C7"
+        }
       />
-
       <Text
         style={
           active
-            ? styles.navTextActive
+            ? styles.navActive
             : styles.navText
         }
       >
@@ -426,6 +313,7 @@ function NavItem({
   );
 }
 
+/* ---------------- STYLES ---------------- */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -434,60 +322,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
 
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-
-  iconButton: {
-    width: 50,
-    height: 50,
-    backgroundColor: "#fff",
-    borderRadius: 15,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#1B1D4D",
-  },
-
   searchContainer: {
     backgroundColor: "#fff",
     borderRadius: 18,
     paddingHorizontal: 15,
-    height: 58,
+    height: 55,
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 25,
+    marginBottom: 20,
   },
 
   searchInput: {
     flex: 1,
     marginLeft: 10,
-    fontSize: 15,
-    color: "#1B1D4D",
   },
 
   storageCard: {
     backgroundColor: "#39D2C0",
-    borderRadius: 28,
-    padding: 22,
+    borderRadius: 25,
+    padding: 20,
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 30,
+    marginBottom: 25,
   },
 
   circle: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    borderWidth: 10,
+    width: 90,
+    height: 90,
+    borderRadius: 50,
+    borderWidth: 8,
     borderColor: "#fff",
     justifyContent: "center",
     alignItems: "center",
@@ -495,27 +358,24 @@ const styles = StyleSheet.create({
 
   circleText: {
     color: "#fff",
-    fontSize: 22,
     fontWeight: "700",
   },
 
   storageTitle: {
     color: "#fff",
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "700",
-    lineHeight: 30,
   },
 
   storageSub: {
-    color: "#EFFFFC",
-    marginTop: 8,
-    fontSize: 14,
+    color: "#fff",
+    marginTop: 5,
   },
 
   categories: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 30,
+    marginBottom: 20,
   },
 
   categoryItem: {
@@ -523,50 +383,32 @@ const styles = StyleSheet.create({
   },
 
   categoryIcon: {
-    width: 65,
-    height: 65,
-    borderRadius: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 5,
   },
 
   categoryText: {
-    color: "#1B1D4D",
+    fontSize: 12,
     fontWeight: "600",
   },
 
-  recentHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 18,
-  },
-
-  recentTitle: {
-    fontSize: 20,
+  sectionTitle: {
+    fontSize: 18,
     fontWeight: "700",
-    color: "#1B1D4D",
-  },
-
-  resultCount: {
-    color: "#8F96B3",
-    fontWeight: "600",
-  },
-
-  seeAll: {
-    color: "#22C7B8",
-    fontWeight: "700",
+    marginBottom: 15,
   },
 
   fileCard: {
     backgroundColor: "#fff",
-    borderRadius: 22,
-    padding: 18,
+    padding: 15,
+    borderRadius: 18,
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 15,
+    marginBottom: 12,
   },
 
   fileLeft: {
@@ -575,52 +417,43 @@ const styles = StyleSheet.create({
   },
 
   fileIcon: {
-    width: 55,
-    height: 55,
-    borderRadius: 18,
+    width: 50,
+    height: 50,
+    borderRadius: 15,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 15,
+    marginRight: 10,
   },
 
   fileName: {
-    fontSize: 16,
     fontWeight: "700",
-    color: "#1B1D4D",
   },
 
   fileSize: {
     color: "#8F96B3",
-    marginTop: 4,
   },
 
   emptyBox: {
-    backgroundColor: "#fff",
-    borderRadius: 25,
-    padding: 40,
     alignItems: "center",
+    marginTop: 40,
   },
 
   emptyTitle: {
-    fontSize: 18,
     fontWeight: "700",
-    color: "#1B1D4D",
-    marginTop: 15,
+    marginTop: 10,
   },
 
   emptySub: {
     color: "#8F96B3",
-    marginTop: 5,
   },
 
   bottomNav: {
-    height: 85,
+    height: 80,
     backgroundColor: "#fff",
-    borderRadius: 30,
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
-    marginBottom: 15,
+    borderRadius: 25,
     marginTop: 10,
   },
 
@@ -629,27 +462,23 @@ const styles = StyleSheet.create({
   },
 
   navText: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#9AA3C7",
-    marginTop: 4,
-    fontWeight: "500",
   },
 
-  navTextActive: {
-    fontSize: 12,
+  navActive: {
+    fontSize: 11,
     color: "#22C7B8",
-    marginTop: 4,
     fontWeight: "700",
   },
 
-  uploadButton: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+  uploadBtn: {
+    width: 65,
+    height: 65,
+    borderRadius: 35,
     backgroundColor: "#22C7B8",
     justifyContent: "center",
     alignItems: "center",
     marginTop: -30,
-    elevation: 5,
   },
 });
