@@ -1,33 +1,92 @@
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
   ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 import {
   Ionicons,
-  MaterialIcons,
-  FontAwesome5,
+  MaterialIcons
 } from "@expo/vector-icons";
 
 import { router } from "expo-router";
+import { useState } from "react";
 
 export default function HomeScreen() {
+  const [search, setSearch] = useState("");
+
+  const mockResults = [
+    {
+      name: "Preview.mp4",
+      size: "8 MB",
+      icon: "play",
+      color: "#5B7CFA",
+    },
+    {
+      name: "Wallpaper.jpg",
+      size: "4.8 MB",
+      icon: "image",
+      color: "#FF5E8A",
+    },
+    {
+      name: "Music.mp3",
+      size: "12 MB",
+      icon: "musical-notes",
+      color: "#FF914D",
+    },
+    {
+      name: "Project.pdf",
+      size: "2 MB",
+      icon: "document-text",
+      color: "#22C7B8",
+    },
+  ];
+
+  const filteredResults = mockResults.filter((item) =>
+    item.name.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      {/* <View style={styles.header}>
         <TouchableOpacity style={styles.iconButton}>
-          <Ionicons name="menu" size={24} color="#1B1D4D" />
+          <Ionicons
+            name="menu"
+            size={24}
+            color="#1B1D4D"
+          />
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>Home</Text>
 
         <TouchableOpacity style={styles.iconButton}>
-          <Ionicons name="search" size={22} color="#1B1D4D" />
+          <Ionicons
+            name="notifications-outline"
+            size={22}
+            color="#1B1D4D"
+          />
         </TouchableOpacity>
+      </View> */}
+
+      {/* SEARCH BAR */}
+      <View style={styles.searchContainer}>
+        <Ionicons
+          name="search"
+          size={20}
+          color="#9AA3C7"
+        />
+
+        <TextInput
+          placeholder="Search files..."
+          value={search}
+          onChangeText={setSearch}
+          style={styles.searchInput}
+          placeholderTextColor="#9AA3C7"
+        />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -41,7 +100,10 @@ export default function HomeScreen() {
             <Text style={styles.storageTitle}>
               Available{"\n"}Storage
             </Text>
-            <Text style={styles.storageSub}>130GB / 512GB</Text>
+
+            <Text style={styles.storageSub}>
+              130GB / 512GB
+            </Text>
           </View>
         </View>
 
@@ -51,98 +113,196 @@ export default function HomeScreen() {
             style={styles.categoryItem}
             onPress={() => router.push("/all")}
           >
-            <View style={[styles.categoryIcon, { backgroundColor: "#5B7CFA" }]}>
-              <MaterialIcons name="grid-view" size={24} color="#fff" />
+            <View
+              style={[
+                styles.categoryIcon,
+                { backgroundColor: "#5B7CFA" },
+              ]}
+            >
+              <MaterialIcons
+                name="grid-view"
+                size={24}
+                color="#fff"
+              />
             </View>
+
             <Text style={styles.categoryText}>All</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.categoryItem}
-            onPress={() => router.push("/screens/folder")}
+            onPress={() => router.push("/folders")}
           >
-            <View style={[styles.categoryIcon, { backgroundColor: "#59C2FF" }]}>
-              <Ionicons name="folder" size={22} color="#fff" />
+            <View
+              style={[
+                styles.categoryIcon,
+                { backgroundColor: "#59C2FF" },
+              ]}
+            >
+              <Ionicons
+                name="folder"
+                size={22}
+                color="#fff"
+              />
             </View>
-            <Text style={styles.categoryText}>Folder</Text>
+
+            <Text style={styles.categoryText}>
+              Folder
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.categoryItem}
-            onPress={() => router.push("/screens/file")}
+            onPress={() => router.push("/files")}
           >
-            <View style={[styles.categoryIcon, { backgroundColor: "#FF914D" }]}>
-              <Ionicons name="document-text" size={22} color="#fff" />
+            <View
+              style={[
+                styles.categoryIcon,
+                { backgroundColor: "#FF914D" },
+              ]}
+            >
+              <Ionicons
+                name="document-text"
+                size={22}
+                color="#fff"
+              />
             </View>
-            <Text style={styles.categoryText}>File</Text>
+
+            <Text style={styles.categoryText}>Files</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.categoryItem}
-            onPress={() => router.push("/screens/people")}
+            onPress={() => router.push("/people")}
           >
-            <View style={[styles.categoryIcon, { backgroundColor: "#FF5E8A" }]}>
-              <Ionicons name="person" size={22} color="#fff" />
+            <View
+              style={[
+                styles.categoryIcon,
+                { backgroundColor: "#FF5E8A" },
+              ]}
+            >
+              <Ionicons
+                name="people"
+                size={22}
+                color="#fff"
+              />
             </View>
+
             <Text style={styles.categoryText}>People</Text>
           </TouchableOpacity>
         </View>
 
+        {/* Search Results */}
+        {search.length > 0 && (
+          <>
+            <View style={styles.recentHeader}>
+              <Text style={styles.recentTitle}>
+                Search Results
+              </Text>
+
+              <Text style={styles.resultCount}>
+                {filteredResults.length} found
+              </Text>
+            </View>
+
+            {filteredResults.map((item, index) => (
+              <View
+                key={index}
+                style={styles.fileCard}
+              >
+                <View style={styles.fileLeft}>
+                  <View
+                    style={[
+                      styles.fileIcon,
+                      { backgroundColor: item.color },
+                    ]}
+                  >
+                    <Ionicons
+                      name={item.icon as any}
+                      size={18}
+                      color="#fff"
+                    />
+                  </View>
+
+                  <View>
+                    <Text style={styles.fileName}>
+                      {item.name}
+                    </Text>
+
+                    <Text style={styles.fileSize}>
+                      {item.size}
+                    </Text>
+                  </View>
+                </View>
+
+                <Ionicons
+                  name="ellipsis-horizontal"
+                  size={20}
+                  color="#7B7B9D"
+                />
+              </View>
+            ))}
+
+            {filteredResults.length === 0 && (
+              <View style={styles.emptyBox}>
+                <Ionicons
+                  name="search"
+                  size={60}
+                  color="#D0D5E5"
+                />
+
+                <Text style={styles.emptyTitle}>
+                  No Results Found
+                </Text>
+
+                <Text style={styles.emptySub}>
+                  Try another file name
+                </Text>
+              </View>
+            )}
+          </>
+        )}
+
         {/* Recent Files */}
-        <View style={styles.recentHeader}>
-          <Text style={styles.recentTitle}>Recent files</Text>
-          <TouchableOpacity>
-            <Text style={styles.seeAll}>See all</Text>
-          </TouchableOpacity>
-        </View>
+        {search.length === 0 && (
+          <>
+            <View style={styles.recentHeader}>
+              <Text style={styles.recentTitle}>
+                Recent files
+              </Text>
 
-        <View style={styles.fileCard}>
-          <View style={styles.fileLeft}>
-            <View style={styles.fileIcon}>
-              <Ionicons name="play" size={18} color="#fff" />
+              <TouchableOpacity>
+                <Text style={styles.seeAll}>
+                  See all
+                </Text>
+              </TouchableOpacity>
             </View>
 
-            <View>
-              <Text style={styles.fileName}>Preview.mp4</Text>
-              <Text style={styles.fileSize}>8 MB</Text>
-            </View>
-          </View>
+            <FileCard
+              icon="play"
+              color="#5B7CFA"
+              name="Preview.mp4"
+              size="8 MB"
+            />
 
-          <Ionicons name="ellipsis-horizontal" size={20} color="#7B7B9D" />
-        </View>
+            <FileCard
+              icon="image"
+              color="#FF5E8A"
+              name="Wallpaper.jpg"
+              size="4.8 MB"
+            />
 
-        <View style={styles.fileCard}>
-          <View style={styles.fileLeft}>
-            <View style={[styles.fileIcon, { backgroundColor: "#FF5E8A" }]}>
-              <Ionicons name="image" size={18} color="#fff" />
-            </View>
-
-            <View>
-              <Text style={styles.fileName}>Wallpaper.jpg</Text>
-              <Text style={styles.fileSize}>4.8 MB</Text>
-            </View>
-          </View>
-
-          <Ionicons name="ellipsis-horizontal" size={20} color="#7B7B9D" />
-        </View>
-
-        <View style={styles.fileCard}>
-          <View style={styles.fileLeft}>
-            <View style={[styles.fileIcon, { backgroundColor: "#FF914D" }]}>
-              <FontAwesome5 name="music" size={16} color="#fff" />
-            </View>
-
-            <View>
-              <Text style={styles.fileName}>Music.mp3</Text>
-              <Text style={styles.fileSize}>12 MB</Text>
-            </View>
-          </View>
-
-          <Ionicons name="ellipsis-horizontal" size={20} color="#7B7B9D" />
-        </View>
+            <FileCard
+              icon="musical-notes"
+              color="#FF914D"
+              name="Music.mp3"
+              size="12 MB"
+            />
+          </>
+        )}
       </ScrollView>
 
-      {/* Bottom Navigation (FIXED) */}
+      {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <NavItem
           icon="home"
@@ -162,14 +322,18 @@ export default function HomeScreen() {
           style={styles.uploadButton}
           onPress={() => router.push("/upload")}
         >
-          <Ionicons name="cloud-upload" size={24} color="#fff" />
+          <Ionicons
+            name="cloud-upload"
+            size={26}
+            color="#fff"
+          />
         </TouchableOpacity>
 
         <NavItem
           icon="document-text"
           label="Files"
           active={false}
-          onPress={() => router.push("/screens/file")}
+          onPress={() => router.push("/files")}
         />
 
         <NavItem
@@ -183,16 +347,79 @@ export default function HomeScreen() {
   );
 }
 
-/* Reusable Nav Item */
-function NavItem({ icon, label, onPress, active }: { icon: any; label: string; onPress: () => void; active: boolean }) {
+/* FILE CARD */
+function FileCard({
+  icon,
+  color,
+  name,
+  size,
+}: {
+  icon: any;
+  color: string;
+  name: string;
+  size: string;
+}) {
   return (
-    <TouchableOpacity style={styles.navItem} onPress={onPress}>
+    <View style={styles.fileCard}>
+      <View style={styles.fileLeft}>
+        <View
+          style={[
+            styles.fileIcon,
+            { backgroundColor: color },
+          ]}
+        >
+          <Ionicons
+            name={icon}
+            size={18}
+            color="#fff"
+          />
+        </View>
+
+        <View>
+          <Text style={styles.fileName}>{name}</Text>
+          <Text style={styles.fileSize}>{size}</Text>
+        </View>
+      </View>
+
+      <Ionicons
+        name="ellipsis-horizontal"
+        size={20}
+        color="#7B7B9D"
+      />
+    </View>
+  );
+}
+
+/* NAVIGATION ITEM */
+function NavItem({
+  icon,
+  label,
+  onPress,
+  active,
+}: {
+  icon: any;
+  label: string;
+  onPress: () => void;
+  active: boolean;
+}) {
+  return (
+    <TouchableOpacity
+      style={styles.navItem}
+      onPress={onPress}
+    >
       <Ionicons
         name={icon}
         size={24}
         color={active ? "#22C7B8" : "#9AA3C7"}
       />
-      <Text style={active ? styles.navTextActive : styles.navText}>
+
+      <Text
+        style={
+          active
+            ? styles.navTextActive
+            : styles.navText
+        }
+      >
         {label}
       </Text>
     </TouchableOpacity>
@@ -211,7 +438,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 30,
+    marginBottom: 20,
   },
 
   iconButton: {
@@ -224,18 +451,35 @@ const styles = StyleSheet.create({
   },
 
   headerTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "700",
+    color: "#1B1D4D",
+  },
+
+  searchContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    paddingHorizontal: 15,
+    height: 58,
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 25,
+  },
+
+  searchInput: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 15,
     color: "#1B1D4D",
   },
 
   storageCard: {
     backgroundColor: "#39D2C0",
-    borderRadius: 25,
-    padding: 20,
+    borderRadius: 28,
+    padding: 22,
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 30,
   },
 
@@ -279,9 +523,9 @@ const styles = StyleSheet.create({
   },
 
   categoryIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 18,
+    width: 65,
+    height: 65,
+    borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 8,
@@ -295,13 +539,19 @@ const styles = StyleSheet.create({
   recentHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 20,
+    alignItems: "center",
+    marginBottom: 18,
   },
 
   recentTitle: {
     fontSize: 20,
     fontWeight: "700",
     color: "#1B1D4D",
+  },
+
+  resultCount: {
+    color: "#8F96B3",
+    fontWeight: "600",
   },
 
   seeAll: {
@@ -311,10 +561,11 @@ const styles = StyleSheet.create({
 
   fileCard: {
     backgroundColor: "#fff",
-    borderRadius: 20,
+    borderRadius: 22,
     padding: 18,
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 15,
   },
 
@@ -324,10 +575,9 @@ const styles = StyleSheet.create({
   },
 
   fileIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 15,
-    backgroundColor: "#5B7CFA",
+    width: 55,
+    height: 55,
+    borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 15,
@@ -344,14 +594,33 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
+  emptyBox: {
+    backgroundColor: "#fff",
+    borderRadius: 25,
+    padding: 40,
+    alignItems: "center",
+  },
+
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1B1D4D",
+    marginTop: 15,
+  },
+
+  emptySub: {
+    color: "#8F96B3",
+    marginTop: 5,
+  },
+
   bottomNav: {
-    height: 80,
+    height: 85,
     backgroundColor: "#fff",
     borderRadius: 30,
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 15,
     marginTop: 10,
   },
 
@@ -374,12 +643,13 @@ const styles = StyleSheet.create({
   },
 
   uploadButton: {
-    width: 65,
-    height: 65,
-    borderRadius: 32,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     backgroundColor: "#22C7B8",
     justifyContent: "center",
     alignItems: "center",
     marginTop: -30,
+    elevation: 5,
   },
 });
