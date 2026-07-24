@@ -1,26 +1,68 @@
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Image,
-  TextInput,
+  ActivityIndicator,
   Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
+import { getUsers, UserRecord } from "@/app/api/clients/user";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 export default function PeopleScreen() {
-  const [people, setPeople] = useState([
-    { id: "1", name: "John Doe", online: true },
-    { id: "2", name: "Sarah Kim", online: false },
-    { id: "3", name: "Alex Johnson", online: true },
-  ]);
+  const [people, setPeople] = useState<UserRecord[]>([]);
+  const [search, setSearch] = useState("");
 
-  const removePerson = (id: string) => {
+  const [page, setPage] = useState(1);
+  const [hasNext, setHasNext] = useState(false);
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [error, setError] = useState("");
+
+  const loadUsers = useCallback(async (pageToLoad: number, append: boolean) => {
+    if (append) {
+      setIsLoadingMore(true);
+    } else {
+      setIsLoading(true);
+    }
+    setError("");
+
+    const result = await getUsers(pageToLoad);
+
+    if (result.status === "success" && result.data) {
+      const data = result.data;
+
+      setPeople((prev) => (append ? [...prev, ...data.results] : data.results));
+      setHasNext(Boolean(data.next));
+      setPage(pageToLoad);
+    } else {
+      setError(result.message || "Could not load people.");
+    }
+
+    if (append) {
+      setIsLoadingMore(false);
+    } else {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadUsers(1, false);
+  }, [loadUsers]);
+
+  const handleLoadMore = () => {
+    if (isLoadingMore || !hasNext) return;
+    loadUsers(page + 1, true);
+  };
+
+  const removePerson = (id: number) => {
     Alert.alert("Remove Person", "Remove this contact?", [
       { text: "Cancel", style: "cancel" },
       {
@@ -30,6 +72,14 @@ export default function PeopleScreen() {
       },
     ]);
   };
+
+  const filteredPeople = useMemo(() => {
+    const q = search.toLowerCase();
+    return people.filter((p) => {
+      const name = displayName(p).toLowerCase();
+      return name.includes(q) || p.email.toLowerCase().includes(q);
+    });
+  }, [people, search]);
 
   return (
     <View style={styles.container}>
@@ -44,12 +94,7 @@ export default function PeopleScreen() {
 
         <Text style={styles.headerTitle}>People</Text>
 
-        <TouchableOpacity
-          style={styles.iconButton}
-          onPress={() => router.push("/addPeople")}
-        >
-          <Ionicons name="person-add" size={22} color="#1B1D4D" />
-        </TouchableOpacity>
+        <View style={styles.iconButtonPlaceholder} />
       </View>
 
       {/* Search */}
@@ -57,48 +102,102 @@ export default function PeopleScreen() {
         <Ionicons name="search" size={18} color="#8F96B3" />
         <TextInput
           placeholder="Search people..."
+          value={search}
+          onChangeText={setSearch}
           style={styles.searchInput}
         />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.menuContainer}>
-          {people.map((item) => (
-            <PeopleItem
-              key={item.id}
-              item={item}
-              onDelete={() => removePerson(item.id)}
-            />
-          ))}
+      {error ? (
+        <View style={styles.errorBanner}>
+          <Ionicons name="alert-circle-outline" size={18} color="#D64545" />
+          <Text style={styles.errorText}>{error}</Text>
         </View>
+      ) : null}
+
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {isLoading ? (
+          <View style={styles.emptyBox}>
+            <ActivityIndicator size="large" color="#22C7B8" />
+          </View>
+        ) : filteredPeople.length === 0 ? (
+          <View style={styles.emptyBox}>
+            <Ionicons name="people-outline" size={60} color="#D0D5E5" />
+            <Text style={styles.emptyTitle}>No People Found</Text>
+            <Text style={styles.emptySub}>Try a different search</Text>
+          </View>
+        ) : (
+          <>
+            <View style={styles.menuContainer}>
+              {filteredPeople.map((item) => (
+                <PeopleItem
+                  key={item.id}
+                  item={item}
+                  onDelete={() => removePerson(item.id)}
+                />
+              ))}
+            </View>
+
+            {hasNext && !search ? (
+              <TouchableOpacity
+                style={styles.loadMoreBtn}
+                onPress={handleLoadMore}
+                disabled={isLoadingMore}
+              >
+                {isLoadingMore ? (
+                  <ActivityIndicator size="small" color="#5B7CFA" />
+                ) : (
+                  <Text style={styles.loadMoreText}>Load More</Text>
+                )}
+              </TouchableOpacity>
+            ) : null}
+          </>
+        )}
       </ScrollView>
     </View>
   );
 }
 
+function displayName(user: UserRecord) {
+  const full = `${user.first_name} ${user.last_name}`.trim();
+  return full || user.username;
+}
+
 /* PEOPLE ITEM */
-function PeopleItem({ item, onDelete }: { item: { id: string; name: string; online: boolean }; onDelete: () => void }) {
-  const initials = item.name
-    .split(" ")
-    .map((n) => n[0])
-    .join("");
+function PeopleItem({
+  item,
+  onDelete,
+}: {
+  item: UserRecord;
+  onDelete: () => void;
+}) {
+  const name = displayName(item);
+  const initials =
+    name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "?";
 
   return (
     <TouchableOpacity style={styles.menuItem}>
       <View style={styles.menuLeft}>
         {/* Avatar */}
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initials}</Text>
-
-          {/* Online dot */}
-          {item.online && <View style={styles.onlineDot} />}
+          {item.profile_picture ? (
+            <Image
+              source={{ uri: item.profile_picture }}
+              style={styles.avatarImage}
+            />
+          ) : (
+            <Text style={styles.avatarText}>{initials}</Text>
+          )}
         </View>
 
         <View>
-          <Text style={styles.menuText}>{item.name}</Text>
-          <Text style={styles.statusText}>
-            {item.online ? "Online" : "Offline"}
-          </Text>
+          <Text style={styles.menuText}>{name}</Text>
+          <Text style={styles.statusText}>{item.email}</Text>
         </View>
       </View>
 
@@ -113,6 +212,7 @@ function PeopleItem({ item, onDelete }: { item: { id: string; name: string; onli
     </TouchableOpacity>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -137,6 +237,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
+  iconButtonPlaceholder: {
+    width: 50,
+    height: 50,
+  },
+
   headerTitle: {
     fontSize: 22,
     fontWeight: "700",
@@ -158,8 +263,25 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
+  errorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FDECEC",
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 16,
+    gap: 8,
+  },
+
+  errorText: {
+    color: "#D64545",
+    fontSize: 13,
+    flex: 1,
+  },
+
   menuContainer: {
-    marginBottom: 30,
+    marginBottom: 15,
   },
 
   menuItem: {
@@ -186,23 +308,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 15,
     position: "relative",
+    overflow: "hidden",
+  },
+
+  avatarImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
   },
 
   avatarText: {
     color: "#fff",
     fontWeight: "700",
-  },
-
-  onlineDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "#22C7B8",
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    borderWidth: 2,
-    borderColor: "#fff",
   },
 
   menuText: {
@@ -227,5 +344,30 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFECEC",
     borderRadius: 10,
     marginRight: 10,
+  },
+
+  emptyBox: {
+    alignItems: "center",
+    marginTop: 40,
+  },
+
+  emptyTitle: {
+    fontWeight: "700",
+    marginTop: 10,
+  },
+
+  emptySub: {
+    color: "#8F96B3",
+  },
+
+  loadMoreBtn: {
+    alignItems: "center",
+    paddingVertical: 14,
+    marginBottom: 30,
+  },
+
+  loadMoreText: {
+    color: "#5B7CFA",
+    fontWeight: "700",
   },
 });
