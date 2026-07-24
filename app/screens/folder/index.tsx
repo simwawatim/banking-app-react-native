@@ -1,41 +1,133 @@
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
+  ActivityIndicator,
   Alert,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import {
+  deleteFolder as deleteFolderApi,
+  Folder,
+  getFolders,
+  updateFolder as updateFolderApi,
+} from "../../api/clients/folder";
+
+const FOLDER_COLORS = ["#5B7CFA", "#59C2FF", "#FF914D", "#22C7B8", "#FF5E8A"];
+
+function colorForId(id: number) {
+  return FOLDER_COLORS[id % FOLDER_COLORS.length];
+}
 
 export default function FolderScreen() {
-  const [locked, setLocked] = useState(true);
+  const [folders, setFolders] = useState<Folder[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingName, setEditingName] = useState("");
 
-  const [folders, setFolders] = useState([
-    { id: "1", name: "Work Files", icon: "briefcase", color: "#5B7CFA" },
-    { id: "2", name: "School Docs", icon: "school", color: "#59C2FF", lib: "MaterialIcons" },
-    { id: "3", name: "Personal", icon: "person", color: "#FF914D" },
-  ]);
+  const loadFolders = useCallback(async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
 
-  const deleteFolder = (id: string) => {
-    Alert.alert("Delete Folder", "Are you sure you want to delete this folder?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => {
-          setFolders((prev) => prev.filter((item) => item.id !== id));
+    const response = await getFolders();
+
+    if (response.status === "success" && response.data) {
+      setFolders(response.data);
+    } else {
+      Alert.alert("Error", response.message);
+    }
+
+    if (isRefresh) {
+      setRefreshing(false);
+    } else {
+      setLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadFolders();
+    }, [loadFolders]),
+  );
+
+  const handleRefresh = () => {
+    loadFolders(true);
+  };
+
+  const handleDelete = (id: number) => {
+    Alert.alert(
+      "Delete Folder",
+      "Are you sure you want to delete this folder?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setDeletingId(id);
+            const response = await deleteFolderApi(id);
+            setDeletingId(null);
+
+            if (response.status === "success") {
+              setFolders((prev) => prev.filter((item) => item.id !== id));
+            } else {
+              Alert.alert("Error", response.message);
+            }
+          },
         },
-      },
-    ]);
+      ],
+    );
+  };
+
+  const startEdit = (item: Folder) => {
+    setEditingId(item.id);
+    setEditingName(item.folder_name);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingName("");
+  };
+
+  const saveEdit = async (id: number) => {
+    if (!editingName.trim()) {
+      Alert.alert("Error", "Folder name cannot be empty");
+      return;
+    }
+
+    setUpdatingId(id);
+    const response = await updateFolderApi(id, {
+      folder_name: editingName.trim(),
+    });
+    setUpdatingId(null);
+
+    if (response.status === "success" && response.data) {
+      setFolders((prev) =>
+        prev.map((item) => (item.id === id ? response.data! : item)),
+      );
+      setEditingId(null);
+      setEditingName("");
+    } else {
+      Alert.alert("Error", response.message);
+    }
   };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.iconButton}
@@ -47,67 +139,159 @@ export default function FolderScreen() {
         <Text style={styles.headerTitle}>Folders</Text>
 
         <TouchableOpacity
-            style={styles.iconButton}
-            onPress={() => router.push("/folderCreate")}
-            >
-            <Ionicons name="add" size={22} color="#1B1D4D" />
+          style={styles.iconButton}
+          onPress={() => router.push("/folderCreate")}
+        >
+          <Ionicons name="add" size={22} color="#1B1D4D" />
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* NORMAL FOLDERS */}
-        <View style={styles.menuContainer}>
-          {folders.map((item) => (
-            <FolderItem
-              key={item.id}
-              item={item}
-              onDelete={() => deleteFolder(item.id)}
+      {loading ? (
+        <ActivityIndicator
+          size="large"
+          color="#5B7CFA"
+          style={{ marginTop: 40 }}
+        />
+      ) : (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor="#5B7CFA"
+              colors={["#5B7CFA"]}
             />
-          ))}
-        </View>
-      </ScrollView>
+          }
+        >
+          {folders.length === 0 ? (
+            <Text style={styles.emptyText}>
+              No folders yet. Tap + to create one.
+            </Text>
+          ) : (
+            <View style={styles.menuContainer}>
+              {folders.map((item) => (
+                <FolderItem
+                  key={item.id}
+                  item={item}
+                  deleting={deletingId === item.id}
+                  updating={updatingId === item.id}
+                  isEditing={editingId === item.id}
+                  editingName={editingName}
+                  onEditingNameChange={setEditingName}
+                  onStartEdit={() => startEdit(item)}
+                  onCancelEdit={cancelEdit}
+                  onSaveEdit={() => saveEdit(item.id)}
+                  onDelete={() => handleDelete(item.id)}
+                />
+              ))}
+            </View>
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 }
 
-/* Folder Item */
 interface FolderItemProps {
-  item: {
-    id: string;
-    name: string;
-    icon: string;
-    color: string;
-    lib?: string;
-  };
+  item: Folder;
+  deleting: boolean;
+  updating: boolean;
+  isEditing: boolean;
+  editingName: string;
+  onEditingNameChange: (value: string) => void;
+  onStartEdit: () => void;
+  onCancelEdit: () => void;
+  onSaveEdit: () => void;
   onDelete: () => void;
 }
 
-function FolderItem({ item, onDelete }: FolderItemProps) {
-  const IconComponent =
-    item.lib === "MaterialIcons" ? MaterialIcons : Ionicons;
+function FolderItem({
+  item,
+  deleting,
+  updating,
+  isEditing,
+  editingName,
+  onEditingNameChange,
+  onStartEdit,
+  onCancelEdit,
+  onSaveEdit,
+  onDelete,
+}: FolderItemProps) {
+  const busy = deleting || updating;
 
   return (
-    <TouchableOpacity style={styles.menuItem}>
+    <View style={styles.menuItem}>
       <View style={styles.menuLeft}>
-        <View style={[styles.menuIcon, { backgroundColor: item.color }]}>
-          <IconComponent name={item.icon as any} size={22} color="#fff" />
+        <View
+          style={[styles.menuIcon, { backgroundColor: colorForId(item.id) }]}
+        >
+          <Ionicons name="folder" size={22} color="#fff" />
         </View>
 
-        <Text style={styles.menuText}>{item.name}</Text>
+        {isEditing ? (
+          <TextInput
+            value={editingName}
+            onChangeText={onEditingNameChange}
+            style={styles.editInput}
+            editable={!updating}
+            autoFocus
+          />
+        ) : (
+          <Text style={styles.menuText}>{item.folder_name}</Text>
+        )}
       </View>
 
-      {/* ACTION BUTTONS */}
       <View style={styles.actions}>
-        <TouchableOpacity
-          onPress={onDelete}
-          style={styles.deleteBtn}
-        >
-          <Ionicons name="trash" size={20} color="#FF5E5E" />
-        </TouchableOpacity>
+        {isEditing ? (
+          <>
+            <TouchableOpacity
+              onPress={onSaveEdit}
+              style={styles.saveBtn}
+              disabled={updating}
+            >
+              {updating ? (
+                <ActivityIndicator size="small" color="#22C7B8" />
+              ) : (
+                <Ionicons name="checkmark" size={20} color="#22C7B8" />
+              )}
+            </TouchableOpacity>
 
-        <Ionicons name="chevron-forward" size={20} color="#9AA3C7" />
+            <TouchableOpacity
+              onPress={onCancelEdit}
+              style={styles.cancelBtn}
+              disabled={updating}
+            >
+              <Ionicons name="close" size={20} color="#8F96B3" />
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <TouchableOpacity
+              onPress={onStartEdit}
+              style={styles.editBtn}
+              disabled={busy}
+            >
+              <Ionicons name="pencil" size={18} color="#5B7CFA" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={onDelete}
+              style={styles.deleteBtn}
+              disabled={busy}
+            >
+              {deleting ? (
+                <ActivityIndicator size="small" color="#FF5E5E" />
+              ) : (
+                <Ionicons name="trash" size={20} color="#FF5E5E" />
+              )}
+            </TouchableOpacity>
+
+            <Ionicons name="chevron-forward" size={20} color="#9AA3C7" />
+          </>
+        )}
       </View>
-    </TouchableOpacity>
+    </View>
   );
 }
 
@@ -141,6 +325,12 @@ const styles = StyleSheet.create({
     color: "#1B1D4D",
   },
 
+  emptyText: {
+    textAlign: "center",
+    color: "#8F96B3",
+    marginTop: 40,
+  },
+
   menuContainer: {
     marginBottom: 30,
   },
@@ -158,6 +348,7 @@ const styles = StyleSheet.create({
   menuLeft: {
     flexDirection: "row",
     alignItems: "center",
+    flex: 1,
   },
 
   menuIcon: {
@@ -175,10 +366,28 @@ const styles = StyleSheet.create({
     color: "#1B1D4D",
   },
 
+  editInput: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1B1D4D",
+    backgroundColor: "#F5F7FB",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+
   actions: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
+  },
+
+  editBtn: {
+    padding: 6,
+    borderRadius: 10,
+    backgroundColor: "#EEF1FF",
+    marginRight: 4,
   },
 
   deleteBtn: {
@@ -188,47 +397,16 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
 
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1B1D4D",
-    marginBottom: 15,
+  saveBtn: {
+    padding: 6,
+    borderRadius: 10,
+    backgroundColor: "#E9FBF8",
+    marginRight: 4,
   },
 
-  secretCard: {
-    backgroundColor: "#1B1D4D",
-    padding: 18,
-    borderRadius: 20,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-
-  secretLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  secretIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 15,
-    backgroundColor: "#FF5E8A",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 15,
-  },
-
-  secretTitle: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-
-  secretText: {
-    color: "#B8B8C7",
-    fontSize: 12,
-    marginTop: 4,
+  cancelBtn: {
+    padding: 6,
+    borderRadius: 10,
+    backgroundColor: "#F0F1F5",
   },
 });

@@ -1,4 +1,8 @@
 import {
+  ActivityIndicator,
+  Image,
+  Modal,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -7,70 +11,164 @@ import {
   View,
 } from "react-native";
 
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+import { logout } from "@/app/api/api";
 import {
-  Ionicons,
-  MaterialIcons,
-} from "@expo/vector-icons";
+  DashboardStats,
+  getDashboardStats,
+  getProfile,
+  RecentFile,
+} from "@/app/api/client";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { router } from "expo-router";
-import { useMemo, useState } from "react";
-
-/* ---------------- MOCK DATA ---------------- */
-type FileItem = {
-  name: string;
-  size: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  color: string;
-};
-
-const FILES: FileItem[] = [
-  {
-    name: "Preview.mp4",
-    size: "8 MB",
-    icon: "play",
-    color: "#5B7CFA",
-  },
-  {
-    name: "Wallpaper.jpg",
-    size: "4.8 MB",
-    icon: "image",
-    color: "#FF5E8A",
-  },
-  {
-    name: "Music.mp3",
-    size: "12 MB",
-    icon: "musical-notes",
-    color: "#FF914D",
-  },
-  {
-    name: "Project.pdf",
-    size: "2 MB",
-    icon: "document-text",
-    color: "#22C7B8",
-  },
-];
+const DEFAULT_AVATAR = "https://i.pravatar.cc/300";
 
 /* ---------------- SCREEN ---------------- */
 export default function HomeScreen() {
   const [search, setSearch] = useState("");
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
+
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [statsError, setStatsError] = useState("");
 
   const filteredFiles = useMemo(() => {
-    return FILES.filter((f) =>
-      f.name
-        .toLowerCase()
-        .includes(search.toLowerCase())
+    const files = stats?.recent_files ?? [];
+    return files.filter((f) =>
+      f.name.toLowerCase().includes(search.toLowerCase()),
     );
-  }, [search]);
+  }, [search, stats]);
+
+  useEffect(() => {
+    loadProfilePicture();
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadStats();
+    }, []),
+  );
+
+  const loadProfilePicture = async () => {
+    const token = await AsyncStorage.getItem("access_token");
+
+    if (!token) {
+      return;
+    }
+
+    const result = await getProfile();
+
+    if (result.status === "success" && result.data) {
+      setProfilePicture(result.data.profile_picture || null);
+    }
+  };
+
+  const loadStats = async () => {
+    setIsLoadingStats(true);
+    setStatsError("");
+
+    const result = await getDashboardStats();
+
+    if (result.status === "success" && result.data) {
+      console.log(result.data);
+      setStats(result.data);
+    } else {
+      setStatsError(result.message || "Could not load your files.");
+    }
+
+    setIsLoadingStats(false);
+  };
+
+  const handleViewProfile = () => {
+    setMenuVisible(false);
+    router.push("/profile");
+  };
+
+  const handleLogout = async () => {
+    setMenuVisible(false);
+    setLoggingOut(true);
+
+    const refreshToken = await AsyncStorage.getItem("refresh_token");
+
+    if (refreshToken) {
+      await logout({ refresh: refreshToken });
+    }
+
+    await AsyncStorage.multiRemove(["access_token", "refresh_token"]);
+
+    setLoggingOut(false);
+    router.replace("/login");
+  };
+
+  const percentUsed = stats?.storage.percent_used ?? 0;
+  const usedReadable = stats?.storage.used_readable ?? "0 B";
+  const maxReadable = stats?.storage.max_readable ?? "1.0 GB";
 
   return (
     <View style={styles.container}>
+      {/* HEADER */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Files</Text>
+
+        <TouchableOpacity
+          style={styles.avatarWrapper}
+          onPress={() => setMenuVisible(true)}
+        >
+          <Image
+            source={{ uri: profilePicture || DEFAULT_AVATAR }}
+            style={styles.avatar}
+          />
+        </TouchableOpacity>
+      </View>
+
+      {/* PROFILE DROPDOWN MENU */}
+      <Modal
+        visible={menuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <Pressable
+          style={styles.menuOverlay}
+          onPress={() => setMenuVisible(false)}
+        >
+          <View style={styles.menuCard}>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={handleViewProfile}
+            >
+              <Ionicons
+                name="person-circle-outline"
+                size={20}
+                color="#3A3F5C"
+              />
+              <Text style={styles.menuItemText}>View Profile</Text>
+            </TouchableOpacity>
+
+            <View style={styles.menuDivider} />
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={handleLogout}
+              disabled={loggingOut}
+            >
+              <Ionicons name="log-out-outline" size={20} color="#FF5E8A" />
+              <Text style={[styles.menuItemText, { color: "#FF5E8A" }]}>
+                {loggingOut ? "Logging out..." : "Logout"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
+
       {/* SEARCH */}
       <View style={styles.searchContainer}>
-        <Ionicons
-          name="search"
-          size={20}
-          color="#9AA3C7"
-        />
+        <Ionicons name="search" size={20} color="#9AA3C7" />
         <TextInput
           placeholder="Search files..."
           value={search}
@@ -79,27 +177,28 @@ export default function HomeScreen() {
         />
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView showsVerticalScrollIndicator={false}>
         {/* STORAGE */}
         <View style={styles.storageCard}>
           <View style={styles.circle}>
-            <Text style={styles.circleText}>
-              80%
-            </Text>
+            <Text style={styles.circleText}>{percentUsed}%</Text>
           </View>
 
           <View>
-            <Text style={styles.storageTitle}>
-              Available{"\n"}Storage
-            </Text>
+            <Text style={styles.storageTitle}>Available{"\n"}Storage</Text>
 
             <Text style={styles.storageSub}>
-              130GB / 512GB
+              {usedReadable} / {maxReadable}
             </Text>
           </View>
         </View>
+
+        {statsError ? (
+          <View style={styles.errorBanner}>
+            <Ionicons name="alert-circle-outline" size={18} color="#D64545" />
+            <Text style={styles.errorText}>{statsError}</Text>
+          </View>
+        ) : null}
 
         {/* CATEGORIES */}
         <View style={styles.categories}>
@@ -107,60 +206,49 @@ export default function HomeScreen() {
             label="All"
             icon="grid-view"
             color="#5B7CFA"
+            count={stats ? stats.total_files : undefined}
             onPress={() => router.push("/all")}
           />
           <Category
             label="Folders"
             icon="folder"
             color="#59C2FF"
-            onPress={() =>
-              router.push("/folders")
-            }
+            count={stats ? stats.total_folders : undefined}
+            onPress={() => router.push("/folders")}
           />
           <Category
             label="Files"
             icon="document-text"
             color="#FF914D"
+            count={stats ? stats.total_files : undefined}
             onPress={() => router.push("/files")}
           />
           <Category
             label="People"
             icon="people"
             color="#FF5E8A"
-            onPress={() =>
-              router.push("/people")
-            }
+            count={stats ? stats.shared_people : undefined}
+            onPress={() => router.push("/people")}
           />
         </View>
 
         {/* FILE LIST */}
         <Text style={styles.sectionTitle}>
-          {search
-            ? "Search Results"
-            : "Recent Files"}
+          {search ? "Search Results" : "Recent Files"}
         </Text>
 
-        {filteredFiles.length === 0 ? (
+        {isLoadingStats ? (
           <View style={styles.emptyBox}>
-            <Ionicons
-              name="search"
-              size={60}
-              color="#D0D5E5"
-            />
-            <Text style={styles.emptyTitle}>
-              No Files Found
-            </Text>
-            <Text style={styles.emptySub}>
-              Try a different name
-            </Text>
+            <ActivityIndicator size="large" color="#22C7B8" />
+          </View>
+        ) : filteredFiles.length === 0 ? (
+          <View style={styles.emptyBox}>
+            <Ionicons name="search" size={60} color="#D0D5E5" />
+            <Text style={styles.emptyTitle}>No Files Found</Text>
+            <Text style={styles.emptySub}>Try a different name</Text>
           </View>
         ) : (
-          filteredFiles.map((file, i) => (
-            <FileCard
-              key={i}
-              file={file}
-            />
-          ))
+          filteredFiles.map((file) => <FileCard key={file.id} file={file} />)
         )}
       </ScrollView>
 
@@ -177,20 +265,14 @@ export default function HomeScreen() {
           icon="folder"
           label="Folders"
           active={false}
-          onPress={() =>
-            router.push("/folders")
-          }
+          onPress={() => router.push("/folders")}
         />
 
         <TouchableOpacity
           style={styles.uploadBtn}
           onPress={() => router.push("/upload")}
         >
-          <Ionicons
-            name="cloud-upload"
-            size={26}
-            color="#fff"
-          />
+          <Ionicons name="cloud-upload" size={26} color="#fff" />
         </TouchableOpacity>
 
         <Nav
@@ -204,9 +286,7 @@ export default function HomeScreen() {
           icon="person"
           label="Profile"
           active={false}
-          onPress={() =>
-            router.push("/profile")
-          }
+          onPress={() => router.push("/profile")}
         />
       </View>
     </View>
@@ -214,101 +294,65 @@ export default function HomeScreen() {
 }
 
 /* ---------------- CATEGORY ---------------- */
-function Category({
-  label,
-  icon,
-  color,
-  onPress,
-}: any) {
+function Category({ label, icon, color, count, onPress }: any) {
   return (
-    <TouchableOpacity
-      style={styles.categoryItem}
-      onPress={onPress}
-    >
-      <View
-        style={[
-          styles.categoryIcon,
-          { backgroundColor: color },
-        ]}
-      >
-        <MaterialIcons
-          name={icon}
-          size={22}
-          color="#fff"
-        />
+    <TouchableOpacity style={styles.categoryItem} onPress={onPress}>
+      <View style={[styles.categoryIcon, { backgroundColor: color }]}>
+        <MaterialIcons name={icon} size={22} color="#fff" />
       </View>
-      <Text style={styles.categoryText}>
-        {label}
-      </Text>
+      <Text style={styles.categoryText}>{label}</Text>
+      {typeof count === "number" ? (
+        <Text style={styles.categoryCount}>{count}</Text>
+      ) : null}
     </TouchableOpacity>
   );
 }
 
 /* ---------------- FILE CARD ---------------- */
-function FileCard({ file }: { file: FileItem }) {
+function FileCard({ file }: { file: RecentFile }) {
   return (
-    <View style={styles.fileCard}>
+    <TouchableOpacity style={styles.fileCard} onPress={() => router.push("/")}>
       <View style={styles.fileLeft}>
         <View
           style={[
             styles.fileIcon,
-            { backgroundColor: file.color },
+            { backgroundColor: colorForIcon(file.icon) },
           ]}
         >
-          <Ionicons
-            name={file.icon}
-            size={18}
-            color="#fff"
-          />
+          <Ionicons name={file.icon as any} size={18} color="#fff" />
         </View>
 
         <View>
-          <Text style={styles.fileName}>
+          <Text style={styles.fileName} numberOfLines={1}>
             {file.name}
           </Text>
-          <Text style={styles.fileSize}>
-            {file.size}
-          </Text>
+          <Text style={styles.fileSize}>{file.size}</Text>
         </View>
       </View>
 
-      <Ionicons
-        name="ellipsis-horizontal"
-        size={20}
-        color="#7B7B9D"
-      />
-    </View>
+      <Ionicons name="ellipsis-horizontal" size={20} color="#7B7B9D" />
+    </TouchableOpacity>
   );
 }
 
+function colorForIcon(icon: string) {
+  const colors: Record<string, string> = {
+    play: "#5B7CFA",
+    image: "#FF5E8A",
+    "musical-notes": "#FF914D",
+    "document-text": "#22C7B8",
+    archive: "#9B59B6",
+    document: "#8F96B3",
+  };
+  return colors[icon] || "#8F96B3";
+}
+
 /* ---------------- NAV ---------------- */
-function Nav({
-  icon,
-  label,
-  active,
-  onPress,
-}: any) {
+function Nav({ icon, label, active, onPress }: any) {
   return (
-    <TouchableOpacity
-      style={styles.navItem}
-      onPress={onPress}
-    >
-      <Ionicons
-        name={icon}
-        size={22}
-        color={
-          active ? "#22C7B8" : "#9AA3C7"
-        }
-      />
-      <Text
-        style={
-          active
-            ? styles.navActive
-            : styles.navText
-        }
-      >
-        {label}
-      </Text>
+    <TouchableOpacity style={styles.navItem} onPress={onPress}>
+      <Ionicons name={icon} size={22} color={active ? "#22C7B8" : "#9AA3C7"} />
+      <Text style={active ? styles.navActive : styles.navText}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -320,6 +364,72 @@ const styles = StyleSheet.create({
     backgroundColor: "#F5F7FB",
     paddingTop: 60,
     paddingHorizontal: 20,
+  },
+
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#1E2140",
+  },
+
+  avatarWrapper: {
+    borderRadius: 22,
+    overflow: "hidden",
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+
+  avatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+  },
+
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.15)",
+    alignItems: "flex-end",
+    paddingTop: 100,
+    paddingRight: 20,
+  },
+
+  menuCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    paddingVertical: 8,
+    width: 190,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+
+  menuItemText: {
+    marginLeft: 10,
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#3A3F5C",
+  },
+
+  menuDivider: {
+    height: 1,
+    backgroundColor: "#EEF0F6",
+    marginHorizontal: 8,
   },
 
   searchContainer: {
@@ -343,7 +453,7 @@ const styles = StyleSheet.create({
     padding: 20,
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 25,
+    marginBottom: 16,
   },
 
   circle: {
@@ -372,6 +482,23 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
 
+  errorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FDECEC",
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 16,
+    gap: 8,
+  },
+
+  errorText: {
+    color: "#D64545",
+    fontSize: 13,
+    flex: 1,
+  },
+
   categories: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -396,6 +523,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
+  categoryCount: {
+    fontSize: 11,
+    color: "#8F96B3",
+    marginTop: 2,
+  },
+
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
@@ -408,12 +541,15 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
   },
 
   fileLeft: {
     flexDirection: "row",
     alignItems: "center",
+    flex: 1,
+    marginRight: 10,
   },
 
   fileIcon: {
@@ -427,6 +563,7 @@ const styles = StyleSheet.create({
 
   fileName: {
     fontWeight: "700",
+    maxWidth: 180,
   },
 
   fileSize: {
@@ -455,6 +592,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 25,
     marginTop: 10,
+    marginBottom: 20,
   },
 
   navItem: {

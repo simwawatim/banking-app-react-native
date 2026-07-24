@@ -19,7 +19,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.simwawatim.bankingapp"
     },
     "web": {
       "output": "static",
@@ -38,18 +39,26 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-font",
+      "expo-image",
+      "expo-web-browser",
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "e5fa14b0-fdf6-4a54-8975-5de72d7b87ad"
+      }
     }
   },
-
   "splash": {
-      "backgroundColor": "#C2E96A",
-      "image": "./assets/images/credit-card.png",
-      "resizeMode": "contain"
+    "backgroundColor": "#C2E96A",
+    "image": "./assets/images/credit-card.png",
+    "resizeMode": "contain"
   }
-
 }

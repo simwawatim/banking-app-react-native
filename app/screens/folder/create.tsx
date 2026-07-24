@@ -1,48 +1,61 @@
 import {
-  View,
-  Text,
+  ActivityIndicator,
+  Alert,
   StyleSheet,
+  Text,
   TextInput,
   TouchableOpacity,
-  Alert,
+  View,
 } from "react-native";
 
+import { createFolder } from "@/app/api/clients/folder";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";
 
 export default function CreateFolderScreen() {
   const [name, setName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const createFolder = () => {
+  const handleCreate = async () => {
     if (!name.trim()) {
       Alert.alert("Error", "Folder name cannot be empty");
       return;
     }
 
-    Alert.alert("Success", `Folder "${name}" created`);
-    router.back();
+    setSubmitting(true);
+    const response = await createFolder({ folder_name: name.trim() });
+    setSubmitting(false);
+
+    if (response.status === "success") {
+      router.back();
+    } else {
+      Alert.alert("Error", response.message);
+    }
   };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.iconButton}
           onPress={() => router.back()}
+          disabled={submitting}
         >
           <Ionicons name="close" size={24} color="#1B1D4D" />
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>Create Folder</Text>
 
-        <TouchableOpacity style={styles.iconButton} onPress={createFolder}>
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={handleCreate}
+          disabled={submitting}
+        >
           <Ionicons name="checkmark" size={24} color="#22C7B8" />
         </TouchableOpacity>
       </View>
 
-      {/* Input */}
       <View style={styles.form}>
         <Text style={styles.label}>Folder Name</Text>
 
@@ -51,10 +64,19 @@ export default function CreateFolderScreen() {
           onChangeText={setName}
           placeholder="Enter folder name"
           style={styles.input}
+          editable={!submitting}
         />
 
-        <TouchableOpacity style={styles.button} onPress={createFolder}>
-          <Text style={styles.buttonText}>Create Folder</Text>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={handleCreate}
+          disabled={submitting}
+        >
+          {submitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Create Folder</Text>
+          )}
         </TouchableOpacity>
       </View>
     </View>
