@@ -109,3 +109,31 @@ export const getFile = (id: number): Promise<ApiResponse<FileRecord>> => {
 
   return unwrap<FileRecord>(authClient.get(`/files/${id}/`));
 };
+export interface ShareSecretPayload {
+  file: number;
+  recipientUsername: string;
+  message: string;
+  carrierImage: PickedFile;
+  canDownload?: boolean;
+}
+
+export const shareSecretFile = (
+  payload: ShareSecretPayload,
+): Promise<ApiResponse<unknown>> => {
+  const formData = new FormData();
+  formData.append("file", String(payload.file));
+  formData.append("recipient_username", payload.recipientUsername);
+  formData.append("message", payload.message);
+  formData.append("carrier_image", {
+    uri: payload.carrierImage.uri,
+    name: payload.carrierImage.name,
+    type: payload.carrierImage.mimeType ?? "image/jpeg",
+  } as any);
+  formData.append("can_download", String(payload.canDownload ?? true));
+
+  return unwrap<unknown>(
+    authClient.post("/files/share-secret/", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
+  );
+};
