@@ -26,9 +26,31 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 const DEFAULT_AVATAR = "https://i.pravatar.cc/300";
 
+type FilterType = "all" | "image" | "video" | "document";
+
+const FILTERS: {
+  key: FilterType;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}[] = [
+  { key: "all", label: "All", icon: "apps" },
+  { key: "image", label: "Photos", icon: "image" },
+  { key: "video", label: "Videos", icon: "videocam" },
+  { key: "document", label: "Docs", icon: "document-text" },
+];
+
+// RecentFile has no explicit "type" field from the API — only an `icon`
+// name string. Map that icon to a coarse type bucket for filtering.
+function inferType(file: RecentFile): FilterType {
+  if (file.icon === "image") return "image";
+  if (file.icon === "play") return "video";
+  return "document";
+}
+
 /* ---------------- SCREEN ---------------- */
 export default function HomeScreen() {
   const [search, setSearch] = useState("");
+  const [activeFilter, setActiveFilter] = useState<FilterType>("all");
   const [menuVisible, setMenuVisible] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
@@ -39,10 +61,11 @@ export default function HomeScreen() {
 
   const filteredFiles = useMemo(() => {
     const files = stats?.recent_files ?? [];
-    return files.filter((f) =>
-      f.name.toLowerCase().includes(search.toLowerCase()),
-    );
-  }, [search, stats]);
+
+    return files
+      .filter((f) => f.name.toLowerCase().includes(search.toLowerCase()))
+      .filter((f) => activeFilter === "all" || inferType(f) === activeFilter);
+  }, [search, stats, activeFilter]);
 
   useEffect(() => {
     loadProfilePicture();
@@ -75,7 +98,6 @@ export default function HomeScreen() {
     const result = await getDashboardStats();
 
     if (result.status === "success" && result.data) {
-      console.log(result.data);
       setStats(result.data);
     } else {
       setStatsError(result.message || "Could not load your files.");
@@ -232,10 +254,44 @@ export default function HomeScreen() {
           />
         </View>
 
-        {/* FILE LIST */}
+        {/* SECTION HEADER + TYPE FILTERS */}
         <Text style={styles.sectionTitle}>
           {search ? "Search Results" : "Recent Files"}
         </Text>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.filterRow}
+          contentContainerStyle={{ paddingRight: 20 }}
+        >
+          {FILTERS.map((filter) => {
+            const active = activeFilter === filter.key;
+
+            return (
+              <TouchableOpacity
+                key={filter.key}
+                style={[styles.filterChip, active && styles.filterChipActive]}
+                onPress={() => setActiveFilter(filter.key)}
+                activeOpacity={0.75}
+              >
+                <Ionicons
+                  name={filter.icon}
+                  size={15}
+                  color={active ? "#fff" : "#5B7CFA"}
+                />
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    active && styles.filterChipTextActive,
+                  ]}
+                >
+                  {filter.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
 
         {isLoadingStats ? (
           <View style={styles.emptyBox}>
@@ -245,7 +301,7 @@ export default function HomeScreen() {
           <View style={styles.emptyBox}>
             <Ionicons name="search" size={60} color="#D0D5E5" />
             <Text style={styles.emptyTitle}>No Files Found</Text>
-            <Text style={styles.emptySub}>Try a different name</Text>
+            <Text style={styles.emptySub}>Try a different name or filter</Text>
           </View>
         ) : (
           filteredFiles.map((file) => <FileCard key={file.id} file={file} />)
@@ -310,8 +366,18 @@ function Category({ label, icon, color, count, onPress }: any) {
 
 /* ---------------- FILE CARD ---------------- */
 function FileCard({ file }: { file: RecentFile }) {
+  const type = inferType(file);
+
   return (
-    <TouchableOpacity style={styles.fileCard} onPress={() => router.push("/")}>
+    <TouchableOpacity
+      style={styles.fileCard}
+      onPress={() =>
+        router.push({
+          pathname: "/file/[id]",
+          params: { id: String(file.id) },
+        })
+      }
+    >
       <View style={styles.fileLeft}>
         <View
           style={[
@@ -320,9 +386,15 @@ function FileCard({ file }: { file: RecentFile }) {
           ]}
         >
           <Ionicons name={file.icon as any} size={18} color="#fff" />
+
+          {type === "video" && (
+            <View style={styles.playBadge}>
+              <Ionicons name="play" size={10} color="#fff" />
+            </View>
+          )}
         </View>
 
-        <View>
+        <View style={{ flexShrink: 1 }}>
           <Text style={styles.fileName} numberOfLines={1}>
             {file.name}
           </Text>
@@ -532,7 +604,39 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
-    marginBottom: 15,
+    marginBottom: 12,
+  },
+
+  filterRow: {
+    marginBottom: 16,
+  },
+
+  filterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#E5EAF3",
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 30,
+    marginRight: 10,
+  },
+
+  filterChipActive: {
+    backgroundColor: "#5B7CFA",
+    borderColor: "#5B7CFA",
+  },
+
+  filterChipText: {
+    fontSize: 12.5,
+    fontWeight: "600",
+    color: "#3A3F5C",
+    marginLeft: 6,
+  },
+
+  filterChipTextActive: {
+    color: "#fff",
   },
 
   fileCard: {
@@ -559,6 +663,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: 10,
+  },
+
+  playBadge: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "rgba(21, 24, 51, 0.85)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "#fff",
   },
 
   fileName: {

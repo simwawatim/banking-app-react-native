@@ -92,3 +92,20 @@ export const uploadFiles = (
     }),
   );
 };
+
+export const getFile = (id: number): Promise<ApiResponse<FileRecord>> => {
+  if (!Number.isFinite(id) || id <= 0) {
+    console.warn(
+      `getFile() called with invalid id (${id}) — request blocked. Call stack:`,
+      new Error().stack,
+    );
+
+    return Promise.resolve({
+      status: "fail",
+      message: "Invalid file id.",
+      data: null,
+    });
+  }
+
+  return unwrap<FileRecord>(authClient.get(`/files/${id}/`));
+};

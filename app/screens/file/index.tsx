@@ -16,6 +16,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   deleteFile as deleteFileApi,
   FileRecord,
+  getFile,
   getFiles,
   uploadFiles,
 } from "../../api/clients/file";
@@ -40,6 +41,7 @@ export default function FileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [openingId, setOpeningId] = useState<number | null>(null);
 
   const loadFiles = useCallback(async (isRefresh = false) => {
     if (isRefresh) {
@@ -88,6 +90,24 @@ export default function FileScreen() {
         },
       },
     ]);
+  };
+
+  // Only place GET /files/{id}/ is ever called — explicitly, from a button tap,
+  // after the list is already loaded. We confirm the file still exists before
+  // navigating, so the viewer never receives a bad or stale id.
+  const handleView = async (id: number) => {
+    setOpeningId(id);
+    const response = await getFile(id);
+    setOpeningId(null);
+
+    if (response.status === "success" && response.data) {
+      router.push({
+        pathname: "/fileViewer",
+        params: { id: response.data.id },
+      });
+    } else {
+      Alert.alert("Error", response.message);
+    }
   };
 
   const handleUpload = async () => {
@@ -170,6 +190,8 @@ export default function FileScreen() {
             <FileItem
               item={item}
               deleting={deletingId === item.id}
+              opening={openingId === item.id}
+              onView={() => handleView(item.id)}
               onDelete={() => handleDelete(item.id)}
             />
           )}
@@ -182,14 +204,20 @@ export default function FileScreen() {
 function FileItem({
   item,
   deleting,
+  opening,
+  onView,
   onDelete,
 }: {
   item: FileRecord;
   deleting: boolean;
+  opening: boolean;
+  onView: () => void;
   onDelete: () => void;
 }) {
+  const busy = deleting || opening;
+
   return (
-    <TouchableOpacity style={styles.menuItem} disabled={deleting}>
+    <View style={styles.menuItem}>
       <View style={styles.menuLeft}>
         <View style={styles.menuIcon}>
           <Ionicons
@@ -204,18 +232,35 @@ function FileItem({
         </Text>
       </View>
 
-      <TouchableOpacity
-        onPress={onDelete}
-        style={styles.deleteBtn}
-        disabled={deleting}
-      >
-        {deleting ? (
-          <ActivityIndicator size="small" color="#FF5E5E" />
-        ) : (
-          <Ionicons name="trash" size={20} color="#FF5E5E" />
-        )}
-      </TouchableOpacity>
-    </TouchableOpacity>
+      <View style={styles.actions}>
+        <TouchableOpacity
+          style={styles.viewBtn}
+          onPress={onView}
+          disabled={busy}
+        >
+          {opening ? (
+            <ActivityIndicator size="small" color="#5B7CFA" />
+          ) : (
+            <>
+              <Ionicons name="eye-outline" size={16} color="#5B7CFA" />
+              <Text style={styles.viewBtnText}>View</Text>
+            </>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.deleteBtn}
+          onPress={onDelete}
+          disabled={busy}
+        >
+          {deleting ? (
+            <ActivityIndicator size="small" color="#FF5E5E" />
+          ) : (
+            <Ionicons name="trash" size={18} color="#FF5E5E" />
+          )}
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
@@ -258,7 +303,7 @@ const styles = StyleSheet.create({
   menuItem: {
     backgroundColor: "#fff",
     borderRadius: 20,
-    padding: 18,
+    padding: 16,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -273,21 +318,45 @@ const styles = StyleSheet.create({
   },
 
   menuIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 15,
+    width: 46,
+    height: 46,
+    borderRadius: 14,
     backgroundColor: "#FF914D",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 15,
+    marginRight: 12,
   },
 
   menuText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
     color: "#1B1D4D",
     flexShrink: 1,
   },
 
-  deleteBtn: { padding: 6, borderRadius: 10, backgroundColor: "#FFECEC" },
+  actions: { flexDirection: "row", alignItems: "center", gap: 8 },
+
+  viewBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#EEF1FF",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    minWidth: 68,
+    justifyContent: "center",
+  },
+
+  viewBtnText: {
+    color: "#5B7CFA",
+    fontWeight: "700",
+    fontSize: 12.5,
+    marginLeft: 4,
+  },
+
+  deleteBtn: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: "#FFECEC",
+  },
 });
