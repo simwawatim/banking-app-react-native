@@ -14,16 +14,10 @@ import {
 } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
-import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import {
-  FileRecord,
-  getFiles,
-  PickedFile,
-  shareSecretFile,
-} from "@/app/api/clients/file";
+import { FileRecord, getFiles, shareSecretFile } from "@/app/api/clients/file";
 import { getUsers, UserRecord } from "@/app/api/clients/user";
 
 export default function PeopleScreen() {
@@ -42,10 +36,10 @@ export default function PeopleScreen() {
 
   const [myFiles, setMyFiles] = useState<FileRecord[]>([]);
   const [loadingMyFiles, setLoadingMyFiles] = useState(false);
+  const [fileSearch, setFileSearch] = useState("");
   const [selectedFileId, setSelectedFileId] = useState<number | null>(null);
 
   const [message, setMessage] = useState("");
-  const [carrierImage, setCarrierImage] = useState<PickedFile | null>(null);
   const [canDownload, setCanDownload] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -104,13 +98,18 @@ export default function PeopleScreen() {
     });
   }, [people, search]);
 
+  const filteredMyFiles = useMemo(() => {
+    const q = fileSearch.toLowerCase();
+    return myFiles.filter((f) => f.original_name.toLowerCase().includes(q));
+  }, [myFiles, fileSearch]);
+
   /* ---- SHARE FLOW ---- */
   const openShareModal = async (user: UserRecord) => {
     setSelectedUser(user);
     setShareModalVisible(true);
     setSelectedFileId(null);
+    setFileSearch("");
     setMessage("");
-    setCarrierImage(null);
     setCanDownload(true);
 
     setLoadingMyFiles(true);
@@ -129,45 +128,11 @@ export default function PeopleScreen() {
     setSelectedUser(null);
   };
 
-  const pickCarrierImage = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (!permission.granted) {
-      Alert.alert(
-        "Permission needed",
-        "Please allow photo library access to choose a carrier image.",
-      );
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 1,
-    });
-
-    if (!result.canceled && result.assets?.[0]) {
-      const asset = result.assets[0];
-      setCarrierImage({
-        uri: asset.uri,
-        name: asset.fileName ?? `carrier-${Date.now()}.jpg`,
-        mimeType: asset.mimeType ?? "image/jpeg",
-      });
-    }
-  };
-
   const handleShare = async () => {
     if (!selectedUser) return;
 
     if (!selectedFileId) {
       Alert.alert("Select a file", "Choose which of your files to share.");
-      return;
-    }
-
-    if (!carrierImage) {
-      Alert.alert(
-        "Select a carrier image",
-        "Choose an image to hide the file inside.",
-      );
       return;
     }
 
@@ -182,7 +147,6 @@ export default function PeopleScreen() {
       file: selectedFileId,
       recipientUsername: selectedUser.username,
       message: message.trim(),
-      carrierImage,
       canDownload,
     });
 
@@ -291,65 +255,64 @@ export default function PeopleScreen() {
               </View>
 
               <Text style={styles.fieldLabel}>Choose a file</Text>
+
+              <View style={styles.fileSearchBox}>
+                <Ionicons name="search" size={16} color="#8F96B3" />
+                <TextInput
+                  placeholder="Search your files..."
+                  value={fileSearch}
+                  onChangeText={setFileSearch}
+                  style={styles.fileSearchInput}
+                />
+              </View>
+
               {loadingMyFiles ? (
                 <ActivityIndicator
                   size="small"
                   color="#22C7B8"
                   style={{ marginVertical: 10 }}
                 />
-              ) : myFiles.length === 0 ? (
-                <Text style={styles.emptySub}>You have no files to share.</Text>
+              ) : filteredMyFiles.length === 0 ? (
+                <Text style={[styles.emptySub, { marginBottom: 16 }]}>
+                  {myFiles.length === 0
+                    ? "You have no files to share."
+                    : "No files match your search."}
+                </Text>
               ) : (
                 <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={{ marginBottom: 16 }}
+                  style={styles.fileList}
+                  nestedScrollEnabled
+                  showsVerticalScrollIndicator={false}
                 >
-                  {myFiles.map((f) => {
+                  {filteredMyFiles.map((f) => {
                     const active = selectedFileId === f.id;
                     return (
                       <TouchableOpacity
                         key={f.id}
-                        style={[
-                          styles.fileChip,
-                          active && styles.fileChipActive,
-                        ]}
+                        style={[styles.fileRow, active && styles.fileRowActive]}
                         onPress={() => setSelectedFileId(f.id)}
                       >
                         <Text
                           style={[
-                            styles.fileChipText,
-                            active && styles.fileChipTextActive,
+                            styles.fileRowText,
+                            active && styles.fileRowTextActive,
                           ]}
                           numberOfLines={1}
                         >
                           {f.original_name}
                         </Text>
+                        {active && (
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={18}
+                            color="#fff"
+                          />
+                        )}
                       </TouchableOpacity>
                     );
                   })}
                 </ScrollView>
               )}
-
-              <Text style={styles.fieldLabel}>Carrier image</Text>
-              <TouchableOpacity
-                style={styles.carrierPicker}
-                onPress={pickCarrierImage}
-              >
-                {carrierImage ? (
-                  <Image
-                    source={{ uri: carrierImage.uri }}
-                    style={styles.carrierPreview}
-                  />
-                ) : (
-                  <View style={styles.carrierPlaceholder}>
-                    <Ionicons name="image-outline" size={26} color="#8F96B3" />
-                    <Text style={styles.carrierPlaceholderText}>
-                      Choose an image
-                    </Text>
-                  </View>
-                )}
-              </TouchableOpacity>
 
               <Text style={styles.fieldLabel}>Message</Text>
               <TextInput
@@ -638,52 +601,51 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
-  fileChip: {
+  fileSearchBox: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "#F0F2FA",
-    borderRadius: 14,
-    paddingVertical: 10,
     paddingHorizontal: 14,
-    marginRight: 10,
-    maxWidth: 160,
+    borderRadius: 14,
+    height: 46,
+    marginBottom: 10,
   },
 
-  fileChipActive: {
-    backgroundColor: "#5B7CFA",
+  fileSearchInput: {
+    marginLeft: 8,
+    flex: 1,
   },
 
-  fileChipText: {
-    fontSize: 13,
-    color: "#1B1D4D",
-    fontWeight: "600",
-  },
-
-  fileChipTextActive: {
-    color: "#fff",
-  },
-
-  carrierPicker: {
+  fileList: {
+    maxHeight: 180,
     marginBottom: 16,
   },
 
-  carrierPreview: {
-    width: "100%",
-    height: 160,
-    borderRadius: 16,
-  },
-
-  carrierPlaceholder: {
-    width: "100%",
-    height: 120,
-    borderRadius: 16,
-    backgroundColor: "#F0F2FA",
-    justifyContent: "center",
+  fileRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
+    backgroundColor: "#F0F2FA",
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 8,
   },
 
-  carrierPlaceholderText: {
-    marginTop: 8,
-    color: "#8F96B3",
-    fontSize: 13,
+  fileRowActive: {
+    backgroundColor: "#5B7CFA",
+  },
+
+  fileRowText: {
+    fontSize: 13.5,
+    color: "#1B1D4D",
+    fontWeight: "600",
+    flexShrink: 1,
+    marginRight: 8,
+  },
+
+  fileRowTextActive: {
+    color: "#fff",
   },
 
   messageInput: {
