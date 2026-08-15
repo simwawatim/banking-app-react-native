@@ -37,7 +37,6 @@ export default function PeopleScreen() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState("");
 
-  /* ---- SHARE MODAL STATE ---- */
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserRecord | null>(null);
 

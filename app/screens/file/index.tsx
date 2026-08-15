@@ -2,6 +2,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Image,
   RefreshControl,
   StyleSheet,
   Text,
@@ -12,7 +13,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { router, useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   deleteFile as deleteFileApi,
   FileRecord,
@@ -20,6 +21,12 @@ import {
   getFiles,
   uploadFiles,
 } from "../../api/clients/file";
+import {
+  getReceivedSharedFiles,
+  SharedFileReceived,
+} from "../../api/clients/shared";
+
+type ViewTab = "mine" | "shared";
 
 function iconForFile(name: string): keyof typeof Ionicons.glyphMap {
   const ext = name.split(".").pop()?.toLowerCase();
@@ -36,40 +43,62 @@ export default function FileScreen() {
   const { folderId } = useLocalSearchParams<{ folderId?: string }>();
   const targetFolder = folderId ? Number(folderId) : 1;
 
+  const [activeTab, setActiveTab] = useState<ViewTab>("mine");
+
   const [files, setFiles] = useState<FileRecord[]>([]);
+  const [sharedFiles, setSharedFiles] = useState<SharedFileReceived[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [openingId, setOpeningId] = useState<number | null>(null);
 
-  const loadFiles = useCallback(async (isRefresh = false) => {
-    if (isRefresh) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
+  const loadData = useCallback(
+    async (isRefresh = false) => {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
 
-    const response = await getFiles();
+      if (activeTab === "mine") {
+        const response = await getFiles();
 
-    if (response.status === "success" && response.data) {
-      setFiles(response.data);
-    } else {
-      Alert.alert("Error", response.message);
-    }
+        if (response.status === "success" && response.data) {
+          setFiles(response.data);
+        } else {
+          Alert.alert("Error", response.message);
+        }
+      } else {
+        const response = await getReceivedSharedFiles();
 
-    if (isRefresh) {
-      setRefreshing(false);
-    } else {
-      setLoading(false);
-    }
-  }, []);
+        if (response.status === "success" && response.data) {
+          setSharedFiles(response.data);
+        } else {
+          Alert.alert("Error", response.message);
+        }
+      }
+
+      if (isRefresh) {
+        setRefreshing(false);
+      } else {
+        setLoading(false);
+      }
+    },
+    [activeTab],
+  );
 
   useEffect(() => {
-    loadFiles();
-  }, [loadFiles]);
+    loadData();
+  }, [loadData]);
 
-  const handleRefresh = () => loadFiles(true);
+  const handleRefresh = () => loadData(true);
+
+  const unreadSharedCount = useMemo(
+    () => sharedFiles.filter((f) => !f.is_read).length,
+    [sharedFiles],
+  );
 
   const handleDelete = (id: number) => {
     Alert.alert("Delete File", "Are you sure you want to delete this file?", [
@@ -110,6 +139,13 @@ export default function FileScreen() {
     }
   };
 
+  const handleViewShared = (id: number) => {
+    router.push({
+      pathname: "/screens/shared/[id]",
+      params: { id: String(id) },
+    });
+  };
+
   const handleUpload = async () => {
     const result = await DocumentPicker.getDocumentAsync({
       multiple: true,
@@ -148,15 +184,62 @@ export default function FileScreen() {
 
         <Text style={styles.headerTitle}>Files</Text>
 
+        {activeTab === "mine" ? (
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={handleUpload}
+            disabled={uploading}
+          >
+            {uploading ? (
+              <ActivityIndicator size="small" color="#5B7CFA" />
+            ) : (
+              <Ionicons name="cloud-upload" size={22} color="#1B1D4D" />
+            )}
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.iconButton} />
+        )}
+      </View>
+
+      {/* TAB SWITCH */}
+      <View style={styles.tabSwitch}>
         <TouchableOpacity
-          style={styles.iconButton}
-          onPress={handleUpload}
-          disabled={uploading}
+          style={[
+            styles.tabButton,
+            activeTab === "mine" && styles.tabButtonActive,
+          ]}
+          onPress={() => setActiveTab("mine")}
         >
-          {uploading ? (
-            <ActivityIndicator size="small" color="#5B7CFA" />
-          ) : (
-            <Ionicons name="cloud-upload" size={22} color="#1B1D4D" />
+          <Text
+            style={[
+              styles.tabButtonText,
+              activeTab === "mine" && styles.tabButtonTextActive,
+            ]}
+          >
+            My Files
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.tabButton,
+            activeTab === "shared" && styles.tabButtonActive,
+          ]}
+          onPress={() => setActiveTab("shared")}
+        >
+          <Text
+            style={[
+              styles.tabButtonText,
+              activeTab === "shared" && styles.tabButtonTextActive,
+            ]}
+          >
+            Shared With Me
+          </Text>
+
+          {unreadSharedCount > 0 && (
+            <View style={styles.tabBadge}>
+              <Text style={styles.tabBadgeText}>{unreadSharedCount}</Text>
+            </View>
           )}
         </TouchableOpacity>
       </View>
@@ -167,7 +250,7 @@ export default function FileScreen() {
           color="#5B7CFA"
           style={{ marginTop: 40 }}
         />
-      ) : (
+      ) : activeTab === "mine" ? (
         <FlatList
           data={files}
           keyExtractor={(item) => String(item.id)}
@@ -193,6 +276,30 @@ export default function FileScreen() {
               opening={openingId === item.id}
               onView={() => handleView(item.id)}
               onDelete={() => handleDelete(item.id)}
+            />
+          )}
+        />
+      ) : (
+        <FlatList
+          data={sharedFiles}
+          keyExtractor={(item) => String(item.id)}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.menuContainer}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor="#5B7CFA"
+              colors={["#5B7CFA"]}
+            />
+          }
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>Nothing shared with you yet.</Text>
+          }
+          renderItem={({ item }) => (
+            <SharedFileItem
+              item={item}
+              onView={() => handleViewShared(item.id)}
             />
           )}
         />
@@ -264,6 +371,41 @@ function FileItem({
   );
 }
 
+function SharedFileItem({
+  item,
+  onView,
+}: {
+  item: SharedFileReceived;
+  onView: () => void;
+}) {
+  return (
+    <TouchableOpacity style={styles.menuItem} onPress={onView}>
+      <View style={styles.menuLeft}>
+        <Image
+          source={{ uri: item.carrier_image }}
+          style={styles.sharedThumb}
+        />
+
+        <View style={{ flexShrink: 1 }}>
+          <View style={styles.sharedNameRow}>
+            {!item.is_read && <View style={styles.unreadDot} />}
+            <Text style={styles.menuText} numberOfLines={1}>
+              {item.file_name}
+            </Text>
+          </View>
+          <Text style={styles.sharedMeta}>from @{item.shared_by_username}</Text>
+        </View>
+      </View>
+
+      <Ionicons
+        name={item.can_download ? "download-outline" : "eye-outline"}
+        size={18}
+        color="#5B7CFA"
+      />
+    </TouchableOpacity>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -276,7 +418,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 30,
+    marginBottom: 20,
   },
 
   iconButton: {
@@ -294,6 +436,54 @@ const styles = StyleSheet.create({
     color: "#1B1D4D",
     flex: 1,
     textAlign: "center",
+  },
+
+  tabSwitch: {
+    flexDirection: "row",
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 4,
+    marginBottom: 20,
+  },
+
+  tabButton: {
+    flex: 1,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 10,
+    borderRadius: 12,
+    gap: 6,
+  },
+
+  tabButtonActive: {
+    backgroundColor: "#5B7CFA",
+  },
+
+  tabButtonText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#8F96B3",
+  },
+
+  tabButtonTextActive: {
+    color: "#fff",
+  },
+
+  tabBadge: {
+    backgroundColor: "#FF5E5E",
+    borderRadius: 9,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  tabBadgeText: {
+    color: "#fff",
+    fontSize: 10.5,
+    fontWeight: "700",
   },
 
   emptyText: { textAlign: "center", color: "#8F96B3", marginTop: 40 },
@@ -358,5 +548,32 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 12,
     backgroundColor: "#FFECEC",
+  },
+
+  sharedThumb: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    marginRight: 12,
+    backgroundColor: "#EEF0F6",
+  },
+
+  sharedNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  unreadDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "#FF5E8A",
+    marginRight: 6,
+  },
+
+  sharedMeta: {
+    color: "#8F96B3",
+    fontSize: 12,
+    marginTop: 2,
   },
 });
