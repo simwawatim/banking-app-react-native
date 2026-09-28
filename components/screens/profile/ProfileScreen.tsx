@@ -11,12 +11,12 @@ import {
   View,
 } from "react-native";
 
-import { logout } from "@/app/api/api";
+import { logout } from "@/api/api";
 import {
   getProfile,
   updateProfile,
   updateProfilePicture,
-} from "@/app/api/client";
+} from "@/api/client";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";

@@ -18,14 +18,14 @@ import {
     getSharedFileDetail,
     SharedFileDetail,
     SharedFileReceived,
-} from "@/app/api/clients/shared";
+} from "@/api/clients/shared";
 
 import {
     getSentFileDetail,
     getSentSharedFiles,
     SentFileDetail,
     SharedFileSent,
-} from "@/app/api/clients/sent";
+} from "@/api/clients/sent";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";

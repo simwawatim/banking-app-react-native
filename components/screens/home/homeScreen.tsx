@@ -14,13 +14,13 @@ import {
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import { logout } from "@/app/api/api";
+import { logout } from "@/api/api";
 import {
   DashboardStats,
   getDashboardStats,
   getProfile,
   RecentFile,
-} from "@/app/api/client";
+} from "@/api/client";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 

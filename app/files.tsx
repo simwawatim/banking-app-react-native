@@ -1,4 +1,4 @@
-import FileScreen  from "./screens/file/index"
+import FileScreen  from "@/components/screens/file/index"
 export default function Files(){
     return(<FileScreen/>)
 }

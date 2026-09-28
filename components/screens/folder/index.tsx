@@ -18,7 +18,7 @@ import {
   Folder,
   getFolders,
   updateFolder as updateFolderApi,
-} from "../../api/clients/folder";
+} from "@/api/clients/folder";
 
 const FOLDER_COLORS = ["#5B7CFA", "#59C2FF", "#FF914D", "#22C7B8", "#FF5E8A"];
 

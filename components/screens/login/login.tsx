@@ -12,34 +12,34 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { signup } from "../../api/api";
+import { login } from "@/api/api";
 
-export default function RegisterScreen() {
-  const [email, setEmail] = useState("");
+export default function LoginScreen() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleRegister = async () => {
+  const handleGoBackToSplash = () => {
+    router.push("/");
+  };
+
+  const goToRegister = () => {
+    router.push("/register");
+  };
+
+  const handleLogin = async () => {
     setErrorMessage("");
 
-    if (!email || !username || !password || !confirmPassword) {
-      setErrorMessage("All fields are required.");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setErrorMessage("Passwords do not match.");
+    if (!username || !password) {
+      setErrorMessage("Username and password are required.");
       return;
     }
 
     setIsSubmitting(true);
 
-    const result = await signup({ username, email, password });
+    const result = await login({ username, password });
 
     if (result.status === "success" && result.data) {
       const { access, refresh, user } = result.data;
@@ -50,9 +50,7 @@ export default function RegisterScreen() {
 
       router.replace("/home");
     } else {
-      setErrorMessage(
-        result.message || "Registration failed. Please try again.",
-      );
+      setErrorMessage(result.message || "Invalid username or password.");
     }
 
     setIsSubmitting(false);
@@ -64,22 +62,26 @@ export default function RegisterScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={handleGoBackToSplash}
             style={styles.iconButton}
           >
             <Ionicons name="arrow-back" size={22} color="#1B1D4D" />
           </TouchableOpacity>
         </View>
 
+        {/* Welcome Card */}
         <View style={styles.welcomeCard}>
-          <Text style={styles.title}>Create Account</Text>
+          <Text style={styles.title}>Welcome Back</Text>
+
           <Text style={styles.subtitle}>
-            Sign up to get started, it only takes a minute.
+            Sign in to continue managing your files and cloud storage.
           </Text>
         </View>
 
+        {/* Form Card */}
         <View style={styles.formCard}>
           {errorMessage ? (
             <View style={styles.errorBanner}>
@@ -88,33 +90,15 @@ export default function RegisterScreen() {
             </View>
           ) : null}
 
+          {/* Username */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Work Email</Text>
-
-            <View style={styles.inputContainer}>
-              <Ionicons name="mail-outline" size={20} color="#8F96B3" />
-
-              <TextInput
-                placeholder="Enter email"
-                placeholderTextColor="#8F96B3"
-                style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                editable={!isSubmitting}
-              />
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Username</Text>
+            <Text style={styles.label}>Username or Email</Text>
 
             <View style={styles.inputContainer}>
               <Ionicons name="person-outline" size={20} color="#8F96B3" />
 
               <TextInput
-                placeholder="Enter username"
+                placeholder="Enter username or email"
                 placeholderTextColor="#8F96B3"
                 style={styles.input}
                 value={username}
@@ -125,6 +109,7 @@ export default function RegisterScreen() {
             </View>
           </View>
 
+          {/* Password */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Password</Text>
 
@@ -133,8 +118,8 @@ export default function RegisterScreen() {
 
               <TextInput
                 placeholder="Enter password"
-                secureTextEntry={!showPassword}
                 placeholderTextColor="#8F96B3"
+                secureTextEntry={!showPassword}
                 style={styles.inputSecure}
                 value={password}
                 onChangeText={setPassword}
@@ -155,46 +140,15 @@ export default function RegisterScreen() {
             </View>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Confirm Password</Text>
+          {/* Forgot Password */}
+          <TouchableOpacity disabled={isSubmitting}>
+            <Text style={styles.forgotText}>Forgot Password?</Text>
+          </TouchableOpacity>
 
-            <View style={styles.inputContainer}>
-              <Ionicons
-                name="shield-checkmark-outline"
-                size={20}
-                color="#8F96B3"
-              />
-
-              <TextInput
-                placeholder="Re-enter password"
-                secureTextEntry={!showConfirmPassword}
-                placeholderTextColor="#8F96B3"
-                style={styles.inputSecure}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                autoCapitalize="none"
-                editable={!isSubmitting}
-              />
-
-              <TouchableOpacity
-                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Ionicons
-                  name={showConfirmPassword ? "eye-outline" : "eye-off-outline"}
-                  size={20}
-                  color="#8F96B3"
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-
+          {/* Login Button */}
           <TouchableOpacity
-            style={[
-              styles.registerBtn,
-              isSubmitting && styles.registerBtnDisabled,
-            ]}
-            onPress={handleRegister}
+            style={[styles.loginBtn, isSubmitting && styles.loginBtnDisabled]}
+            onPress={handleLogin}
             disabled={isSubmitting}
             activeOpacity={0.85}
           >
@@ -202,16 +156,18 @@ export default function RegisterScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <>
-                <Ionicons name="person-add" size={20} color="#fff" />
-                <Text style={styles.registerText}>Create Account</Text>
+                <Ionicons name="log-in-outline" size={20} color="#fff" />
+                <Text style={styles.loginText}>Login</Text>
               </>
             )}
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity onPress={() => router.push("/login")}>
-          <Text style={styles.switchText}>
-            Already have an account? <Text style={styles.loginText}>Login</Text>
+        {/* Register */}
+        <TouchableOpacity onPress={goToRegister}>
+          <Text style={styles.registerText}>
+            Don’t have an account?{" "}
+            <Text style={styles.registerLink}>Register</Text>
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -220,7 +176,7 @@ export default function RegisterScreen() {
         <View style={styles.loadingOverlay}>
           <View style={styles.loadingCard}>
             <ActivityIndicator size="large" color="#22C7B8" />
-            <Text style={styles.loadingText}>Creating your account…</Text>
+            <Text style={styles.loadingText}>Signing you in…</Text>
           </View>
         </View>
       </Modal>
@@ -398,14 +354,20 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
   },
 
-  registerBtn: {
+  forgotText: {
+    textAlign: "right",
+    color: "#22C7B8",
+    fontWeight: "600",
+    marginBottom: 20,
+  },
+
+  loginBtn: {
     backgroundColor: "#22C7B8",
     height: 56,
     borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
     flexDirection: "row",
-    marginTop: 6,
     shadowColor: "#22C7B8",
     shadowOpacity: 0.35,
     shadowRadius: 10,
@@ -413,18 +375,18 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
 
-  registerBtnDisabled: {
+  loginBtnDisabled: {
     opacity: 0.7,
   },
 
-  registerText: {
+  loginText: {
     color: "#fff",
     fontWeight: "700",
     fontSize: 16,
     marginLeft: 10,
   },
 
-  switchText: {
+  registerText: {
     textAlign: "center",
     marginTop: 4,
     marginBottom: 10,
@@ -432,7 +394,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-  loginText: {
+  registerLink: {
     color: "#22C7B8",
     fontWeight: "700",
   },

@@ -1,4 +1,4 @@
-import AllScreen  from "./screens/all/index"
+import AllScreen  from "@/components/screens/all/index"
 export default function AllItem(){
     return(<AllScreen/>)
 }

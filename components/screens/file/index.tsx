@@ -20,13 +20,13 @@ import {
   getFile,
   getFiles,
   uploadFiles,
-} from "../../api/clients/file";
+} from "@/api/clients/file";
 import {
   getReceivedSharedFiles,
   SharedFileReceived,
-} from "../../api/clients/shared";
+} from "@/api/clients/shared";
 
-import { getSentSharedFiles, SharedFileSent } from "@/app/api/clients/sent";
+import { getSentSharedFiles, SharedFileSent } from "@/api/clients/sent";
 
 type ViewTab = "mine" | "shared" | "sent";
 

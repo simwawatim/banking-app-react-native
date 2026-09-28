@@ -13,8 +13,8 @@ import {
 import * as DocumentPicker from "expo-document-picker";
 import { useVideoPlayer, VideoView } from "expo-video";
 
-import { uploadFiles as uploadFilesApi } from "@/app/api/clients/file";
-import { Folder, getFolders } from "@/app/api/clients/folder";
+import { uploadFiles as uploadFilesApi } from "@/api/clients/file";
+import { Folder, getFolders } from "@/api/clients/folder";
 import { FontAwesome5, Ionicons, MaterialIcons } from "@expo/vector-icons";
 
 type FileItem = {

@@ -15,9 +15,9 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useEffect, useState } from "react";
 
-import { API_BASE_URL } from "@/app/api/client";
-import { deleteFile, FileRecord, getFile } from "@/app/api/clients/file";
-import { getFolder } from "@/app/api/clients/folder";
+import { API_BASE_URL } from "@/api/client";
+import { deleteFile, FileRecord, getFile } from "@/api/clients/file";
+import { getFolder } from "@/api/clients/folder";
 
 const SERVER_ROOT = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
 

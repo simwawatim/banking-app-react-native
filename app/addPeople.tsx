@@ -1,4 +1,4 @@
-import AddPeopleScreen  from "./screens/people/add"
+import AddPeopleScreen  from "@/components/screens/people/add"
 export default function AddPeople(){
     return(<AddPeopleScreen/>)
 }

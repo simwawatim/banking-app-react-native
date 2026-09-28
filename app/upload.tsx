@@ -1,4 +1,4 @@
-import UploadScreen  from "./screens/upload/index"
+import UploadScreen  from "@/components/screens/upload/index"
 export default function Upload(){
     return(<UploadScreen/>)
 }

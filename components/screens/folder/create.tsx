@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native";
 
-import { createFolder } from "@/app/api/clients/folder";
+import { createFolder } from "@/api/clients/folder";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";

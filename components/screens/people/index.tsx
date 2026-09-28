@@ -17,8 +17,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { FileRecord, getFiles, shareSecretFile } from "@/app/api/clients/file";
-import { getUsers, UserRecord } from "@/app/api/clients/user";
+import { FileRecord, getFiles, shareSecretFile } from "@/api/clients/file";
+import { getUsers, UserRecord } from "@/api/clients/user";
 
 export default function PeopleScreen() {
   const [people, setPeople] = useState<UserRecord[]>([]);
