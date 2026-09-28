@@ -26,7 +26,9 @@ import {
   SharedFileReceived,
 } from "../../api/clients/shared";
 
-type ViewTab = "mine" | "shared";
+import { getSentSharedFiles, SharedFileSent } from "@/app/api/clients/sent";
+
+type ViewTab = "mine" | "shared" | "sent";
 
 function iconForFile(name: string): keyof typeof Ionicons.glyphMap {
   const ext = name.split(".").pop()?.toLowerCase();
@@ -47,6 +49,7 @@ export default function FileScreen() {
 
   const [files, setFiles] = useState<FileRecord[]>([]);
   const [sharedFiles, setSharedFiles] = useState<SharedFileReceived[]>([]);
+  const [sentFiles, setSentFiles] = useState<SharedFileSent[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -70,11 +73,19 @@ export default function FileScreen() {
         } else {
           Alert.alert("Error", response.message);
         }
-      } else {
+      } else if (activeTab === "shared") {
         const response = await getReceivedSharedFiles();
 
         if (response.status === "success" && response.data) {
           setSharedFiles(response.data);
+        } else {
+          Alert.alert("Error", response.message);
+        }
+      } else {
+        const response = await getSentSharedFiles();
+
+        if (response.status === "success" && response.data) {
+          setSentFiles(response.data);
         } else {
           Alert.alert("Error", response.message);
         }
@@ -139,11 +150,16 @@ export default function FileScreen() {
     }
   };
 
-  const handleViewShared = (id: number) => {
-    router.push({
-      pathname: "/screens/shared/[id]",
-      params: { id: String(id) },
-    });
+  // No per-row detail route exists for shared/sent items here — the real
+  // detail view is a modal that lives inside the /shared screens themselves
+  // (triggered by tapping a row there, not by a route param). So a tap here
+  // just deep-links to the right list; the id isn't used for navigation.
+  const handleViewShared = () => {
+    router.push("/screens/shared");
+  };
+
+  const handleViewSent = () => {
+    router.push("/screens/shared/sent");
   };
 
   const handleUpload = async () => {
@@ -242,6 +258,23 @@ export default function FileScreen() {
             </View>
           )}
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.tabButton,
+            activeTab === "sent" && styles.tabButtonActive,
+          ]}
+          onPress={() => setActiveTab("sent")}
+        >
+          <Text
+            style={[
+              styles.tabButtonText,
+              activeTab === "sent" && styles.tabButtonTextActive,
+            ]}
+          >
+            Shared by Me
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {loading ? (
@@ -279,7 +312,7 @@ export default function FileScreen() {
             />
           )}
         />
-      ) : (
+      ) : activeTab === "shared" ? (
         <FlatList
           data={sharedFiles}
           keyExtractor={(item) => String(item.id)}
@@ -297,10 +330,30 @@ export default function FileScreen() {
             <Text style={styles.emptyText}>Nothing shared with you yet.</Text>
           }
           renderItem={({ item }) => (
-            <SharedFileItem
-              item={item}
-              onView={() => handleViewShared(item.id)}
+            <SharedFileItem item={item} onView={handleViewShared} />
+          )}
+        />
+      ) : (
+        <FlatList
+          data={sentFiles}
+          keyExtractor={(item) => String(item.id)}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.menuContainer}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor="#5B7CFA"
+              colors={["#5B7CFA"]}
             />
+          }
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>
+              You haven't shared any files yet.
+            </Text>
+          }
+          renderItem={({ item }) => (
+            <SentFileItem item={item} onView={handleViewSent} />
           )}
         />
       )}
@@ -394,6 +447,40 @@ function SharedFileItem({
             </Text>
           </View>
           <Text style={styles.sharedMeta}>from @{item.shared_by_username}</Text>
+        </View>
+      </View>
+
+      <Ionicons
+        name={item.can_download ? "download-outline" : "eye-outline"}
+        size={18}
+        color="#5B7CFA"
+      />
+    </TouchableOpacity>
+  );
+}
+
+function SentFileItem({
+  item,
+  onView,
+}: {
+  item: SharedFileSent;
+  onView: () => void;
+}) {
+  return (
+    <TouchableOpacity style={styles.menuItem} onPress={onView}>
+      <View style={styles.menuLeft}>
+        <Image
+          source={{ uri: item.carrier_image }}
+          style={styles.sharedThumb}
+        />
+
+        <View style={{ flexShrink: 1 }}>
+          <Text style={styles.menuText} numberOfLines={1}>
+            {item.file_name}
+          </Text>
+          <Text style={styles.sharedMeta}>
+            to @{item.shared_with_username} · {item.is_read ? "Seen" : "Unseen"}
+          </Text>
         </View>
       </View>
 

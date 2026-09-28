@@ -11,8 +11,7 @@ import {
 } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   deleteFolder as deleteFolderApi,
@@ -43,18 +42,22 @@ export default function FolderScreen() {
       setLoading(true);
     }
 
-    const response = await getFolders();
+    try {
+      const response = await getFolders();
 
-    if (response.status === "success" && response.data) {
-      setFolders(response.data);
-    } else {
-      Alert.alert("Error", response.message);
-    }
-
-    if (isRefresh) {
-      setRefreshing(false);
-    } else {
-      setLoading(false);
+      if (response.status === "success" && response.data) {
+        setFolders(response.data);
+      } else {
+        Alert.alert("Error", response.message);
+      }
+    } catch (error) {
+      Alert.alert("Error", "Could not load folders. Check your connection.");
+    } finally {
+      if (isRefresh) {
+        setRefreshing(false);
+      } else {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -79,13 +82,18 @@ export default function FolderScreen() {
           style: "destructive",
           onPress: async () => {
             setDeletingId(id);
-            const response = await deleteFolderApi(id);
-            setDeletingId(null);
+            try {
+              const response = await deleteFolderApi(id);
 
-            if (response.status === "success") {
-              setFolders((prev) => prev.filter((item) => item.id !== id));
-            } else {
-              Alert.alert("Error", response.message);
+              if (response.status === "success") {
+                setFolders((prev) => prev.filter((item) => item.id !== id));
+              } else {
+                Alert.alert("Error", response.message);
+              }
+            } catch (error) {
+              Alert.alert("Error", "Could not delete folder. Try again.");
+            } finally {
+              setDeletingId(null);
             }
           },
         },
@@ -110,19 +118,25 @@ export default function FolderScreen() {
     }
 
     setUpdatingId(id);
-    const response = await updateFolderApi(id, {
-      folder_name: editingName.trim(),
-    });
-    setUpdatingId(null);
+    try {
+      const response = await updateFolderApi(id, {
+        folder_name: editingName.trim(),
+      });
 
-    if (response.status === "success" && response.data) {
-      setFolders((prev) =>
-        prev.map((item) => (item.id === id ? response.data! : item)),
-      );
-      setEditingId(null);
-      setEditingName("");
-    } else {
-      Alert.alert("Error", response.message);
+      if (response.status === "success" && response.data) {
+        const updated = response.data;
+        setFolders((prev) =>
+          prev.map((item) => (item.id === id ? updated : item)),
+        );
+        setEditingId(null);
+        setEditingName("");
+      } else {
+        Alert.alert("Error", response.message);
+      }
+    } catch (error) {
+      Alert.alert("Error", "Could not rename folder. Try again.");
+    } finally {
+      setUpdatingId(null);
     }
   };
 
@@ -236,9 +250,13 @@ function FolderItem({
             style={styles.editInput}
             editable={!updating}
             autoFocus
+            returnKeyType="done"
+            onSubmitEditing={onSaveEdit}
           />
         ) : (
-          <Text style={styles.menuText}>{item.folder_name}</Text>
+          <Text style={styles.menuText} numberOfLines={1}>
+            {item.folder_name}
+          </Text>
         )}
       </View>
 
@@ -349,6 +367,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
+    marginRight: 10,
   },
 
   menuIcon: {
@@ -361,6 +380,7 @@ const styles = StyleSheet.create({
   },
 
   menuText: {
+    flexShrink: 1,
     fontSize: 16,
     fontWeight: "600",
     color: "#1B1D4D",

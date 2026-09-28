@@ -1,27 +1,136 @@
-// app/shared/index.tsx
+// Generic screen for both "Shared With Me" (received) and "Shared By Me"
+// (sent). Lives in components/, not app/, since it isn't a route itself —
+// app/shared/index.tsx and app/shared/sent.tsx render it with a direction.
 import {
-  ActivityIndicator,
-  Image,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Image,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 import {
-  getReceivedSharedFiles,
-  getSharedFileDetail,
-  SharedFileDetail,
-  SharedFileReceived,
+    getReceivedSharedFiles,
+    getSharedFileDetail,
+    SharedFileDetail,
+    SharedFileReceived,
 } from "@/app/api/clients/shared";
+
+import {
+    getSentFileDetail,
+    getSentSharedFiles,
+    SentFileDetail,
+    SharedFileSent,
+} from "@/app/api/clients/sent";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 
+export type SharedDirection = "received" | "sent";
+
 type FilterType = "all" | "unread";
+
+// Common shape the UI renders, regardless of which direction the data came
+// from. All filtering/search/rendering below is direction-agnostic — only
+// the normalize* functions and the two loadFiles/openDetail branches know
+// about SharedFileReceived vs SharedFileSent.
+interface DisplayFile {
+  id: number;
+  file_name: string;
+  carrier_image: string;
+  counterpart_username: string;
+  is_read: boolean;
+  can_download: boolean;
+  shared_at: string;
+}
+
+interface DisplayDetail {
+  file: number;
+  file_name: string;
+  carrier_image: string;
+  counterpart_username: string;
+  shared_at: string;
+  can_download: boolean;
+  decrypted_message: string | null;
+}
+
+function normalizeReceived(f: SharedFileReceived): DisplayFile {
+  return {
+    id: f.id,
+    file_name: f.file_name,
+    carrier_image: f.carrier_image,
+    counterpart_username: f.shared_by_username,
+    is_read: f.is_read,
+    can_download: f.can_download,
+    shared_at: f.shared_at,
+  };
+}
+
+function normalizeSent(f: SharedFileSent): DisplayFile {
+  return {
+    id: f.id,
+    file_name: f.file_name,
+    carrier_image: f.carrier_image,
+    counterpart_username: f.shared_with_username,
+    is_read: f.is_read,
+    can_download: f.can_download,
+    shared_at: f.shared_at,
+  };
+}
+
+function normalizeReceivedDetail(d: SharedFileDetail): DisplayDetail {
+  return {
+    file: d.file,
+    file_name: d.file_name,
+    carrier_image: d.carrier_image,
+    counterpart_username: d.shared_by_username,
+    shared_at: d.shared_at,
+    can_download: d.can_download,
+    decrypted_message: d.decrypted_message,
+  };
+}
+
+function normalizeSentDetail(d: SentFileDetail): DisplayDetail {
+  return {
+    file: d.file,
+    file_name: d.file_name,
+    carrier_image: d.carrier_image,
+    counterpart_username: d.shared_with_username,
+    shared_at: d.shared_at,
+    can_download: d.can_download,
+    decrypted_message: d.decrypted_message,
+  };
+}
+
+const COPY: Record<
+  SharedDirection,
+  {
+    title: string;
+    emptyTitle: string;
+    emptySub: string;
+    counterpartPrefix: string;
+    unreadChipLabel: string;
+  }
+> = {
+  received: {
+    title: "Shared With Me",
+    emptyTitle: "Nothing Shared Yet",
+    emptySub: "Files others share with you will show up here",
+    counterpartPrefix: "from",
+    unreadChipLabel: "Unread",
+  },
+  sent: {
+    title: "Shared By Me",
+    emptyTitle: "Nothing Sent Yet",
+    emptySub: "Files you share with others will show up here",
+    counterpartPrefix: "to",
+    unreadChipLabel: "Unseen",
+  },
+};
 
 function formatRelativeTime(iso: string) {
   const then = new Date(iso).getTime();
@@ -41,18 +150,22 @@ function formatRelativeTime(iso: string) {
 }
 
 /* ---------------- SCREEN ---------------- */
-export default function SharedWithMeScreen() {
+export default function SharedFilesScreen({
+  direction,
+}: {
+  direction: SharedDirection;
+}) {
+  const copy = COPY[direction];
+
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterType>("all");
 
-  const [files, setFiles] = useState<SharedFileReceived[]>([]);
+  const [files, setFiles] = useState<DisplayFile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Detail modal state — viewing a shared file's detail happens right here,
-  // not via navigation, so there's no route path to get wrong.
   const [modalVisible, setModalVisible] = useState(false);
-  const [detail, setDetail] = useState<SharedFileDetail | null>(null);
+  const [detail, setDetail] = useState<DisplayDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
   const [revealed, setRevealed] = useState(false);
@@ -61,16 +174,23 @@ export default function SharedWithMeScreen() {
     setIsLoading(true);
     setError("");
 
-    const result = await getReceivedSharedFiles();
+    const result =
+      direction === "received"
+        ? await getReceivedSharedFiles()
+        : await getSentSharedFiles();
 
     if (result.status === "success" && result.data) {
-      setFiles(result.data);
+      const normalized =
+        direction === "received"
+          ? (result.data as SharedFileReceived[]).map(normalizeReceived)
+          : (result.data as SharedFileSent[]).map(normalizeSent);
+      setFiles(normalized);
     } else {
       setError(result.message || "Could not load shared files.");
     }
 
     setIsLoading(false);
-  }, []);
+  }, [direction]);
 
   useFocusEffect(
     useCallback(() => {
@@ -96,10 +216,17 @@ export default function SharedWithMeScreen() {
     setRevealed(false);
     setDetailLoading(true);
 
-    const result = await getSharedFileDetail(id);
+    const result =
+      direction === "received"
+        ? await getSharedFileDetail(id)
+        : await getSentFileDetail(id);
 
     if (result.status === "success" && result.data) {
-      setDetail(result.data);
+      const normalized =
+        direction === "received"
+          ? normalizeReceivedDetail(result.data as SharedFileDetail)
+          : normalizeSentDetail(result.data as SentFileDetail);
+      setDetail(normalized);
     } else {
       setDetailError(result.message || "Could not load this file.");
     }
@@ -118,7 +245,7 @@ export default function SharedWithMeScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color="#1E2140" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Shared With Me</Text>
+        <Text style={styles.headerTitle}>{copy.title}</Text>
         <View style={styles.backBtn} />
       </View>
 
@@ -165,7 +292,8 @@ export default function SharedWithMeScreen() {
               filter === "unread" && styles.filterChipTextActive,
             ]}
           >
-            Unread{unreadCount > 0 ? ` (${unreadCount})` : ""}
+            {copy.unreadChipLabel}
+            {unreadCount > 0 ? ` (${unreadCount})` : ""}
           </Text>
         </TouchableOpacity>
       </View>
@@ -185,16 +313,15 @@ export default function SharedWithMeScreen() {
         ) : filteredFiles.length === 0 ? (
           <View style={styles.emptyBox}>
             <Ionicons name="lock-closed-outline" size={60} color="#D0D5E5" />
-            <Text style={styles.emptyTitle}>Nothing Shared Yet</Text>
-            <Text style={styles.emptySub}>
-              Files others share with you will show up here
-            </Text>
+            <Text style={styles.emptyTitle}>{copy.emptyTitle}</Text>
+            <Text style={styles.emptySub}>{copy.emptySub}</Text>
           </View>
         ) : (
           filteredFiles.map((file) => (
             <SharedFileRow
               key={file.id}
               file={file}
+              prefix={copy.counterpartPrefix}
               onPress={() => openDetail(file.id)}
             />
           ))
@@ -242,13 +369,13 @@ export default function SharedWithMeScreen() {
                 <View style={styles.senderRow}>
                   <View style={styles.senderAvatar}>
                     <Text style={styles.senderInitial}>
-                      {detail.shared_by_username.charAt(0).toUpperCase()}
+                      {detail.counterpart_username.charAt(0).toUpperCase()}
                     </Text>
                   </View>
 
                   <View>
                     <Text style={styles.senderName}>
-                      @{detail.shared_by_username}
+                      {copy.counterpartPrefix} @{detail.counterpart_username}
                     </Text>
                     <Text style={styles.sharedAt}>
                       {new Date(detail.shared_at).toLocaleString()}
@@ -342,9 +469,11 @@ export default function SharedWithMeScreen() {
 /* ---------------- ROW ---------------- */
 function SharedFileRow({
   file,
+  prefix,
   onPress,
 }: {
-  file: SharedFileReceived;
+  file: DisplayFile;
+  prefix: string;
   onPress: () => void;
 }) {
   return (
@@ -360,7 +489,7 @@ function SharedFileRow({
             </Text>
           </View>
           <Text style={styles.fileMeta}>
-            from @{file.shared_by_username} ·{" "}
+            {prefix} @{file.counterpart_username} ·{" "}
             {formatRelativeTime(file.shared_at)}
           </Text>
         </View>
@@ -530,7 +659,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
-  /* ---- MODAL ---- */
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(30, 33, 64, 0.4)",
